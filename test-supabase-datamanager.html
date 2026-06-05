@@ -16,6 +16,7 @@
   <div id="results"></div>
 
   <script src="js/backend-memory.js"></script>
+  <script src="js/backend-caching.js"></script>
   <script src="js/data-manager.js"></script>
   <script>
     const results = document.getElementById('results');
@@ -50,6 +51,34 @@
         await b.remove('exercise_records', { date: '2026-06-01', type: '筋トレ' });
         const rows = await b.list('exercise_records');
         if (rows.length !== 0) throw new Error('row not removed');
+      });
+
+      // ----- CachingBackend -----
+      function spyBackend() {
+        const mem = createMemoryBackend();
+        const counts = { list: 0 };
+        return {
+          list: (t) => { counts.list++; return mem.list(t); },
+          upsert: (t, r, c) => mem.upsert(t, r, c),
+          remove: (t, m) => mem.remove(t, m),
+          _counts: counts,
+        };
+      }
+      await test('CachingBackend memoizes list until a write invalidates it', async () => {
+        const spy = spyBackend();
+        const b = createCachingBackend(spy);
+        await b.list('body_records');
+        await b.list('body_records');
+        if (spy._counts.list !== 1) throw new Error('expected 1 inner list call, got ' + spy._counts.list);
+        await b.upsert('body_records', { date: '2026-06-01', weight: 70 }, 'user_id,date');
+        await b.list('body_records');
+        if (spy._counts.list !== 2) throw new Error('expected cache invalidated after write');
+      });
+      await test('CachingBackend returns correct data after write-through', async () => {
+        const b = createCachingBackend(createMemoryBackend());
+        await b.upsert('body_records', { date: '2026-06-01', weight: 70 }, 'user_id,date');
+        const rows = await b.list('body_records');
+        if (rows.length !== 1 || rows[0].weight !== 70) throw new Error('write-through failed');
       });
 
       // ----- DataManager: body -----

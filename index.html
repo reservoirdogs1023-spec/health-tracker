@@ -772,6 +772,7 @@
   </script>
   <script src="js/backend-memory.js"></script>
   <script src="js/backend-supabase.js"></script>
+  <script src="js/backend-caching.js"></script>
   <script src="js/data-manager.js"></script>
 </head>
 <body>
@@ -1579,7 +1580,7 @@
   }
 
   async function startApp() {
-    DataManager = createDataManager(createSupabaseBackend(sb));
+    DataManager = createDataManager(createCachingBackend(createSupabaseBackend(sb)));
     try {
       await renderAll();
     } catch (e) {
