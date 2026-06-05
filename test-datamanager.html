@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DataManager Test</title>
+    <style>
+        body { font-family: monospace; padding: 2rem; background: #f5f5f5; }
+        .test { margin: 1rem 0; padding: 1rem; background: white; border-radius: 4px; }
+        .pass { border-left: 4px solid #4caf50; }
+        .fail { border-left: 4px solid #f44336; }
+        code { background: #efefef; padding: 0.2rem 0.4rem; border-radius: 2px; }
+        pre { background: #333; color: #4caf50; padding: 1rem; border-radius: 4px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>DataManager Test Suite</h1>
+    <div id="results"></div>
+
+    <!-- Include the full index.html script -->
+    <script>
+        const DataManager = (() => {
+            const STORAGE_KEY = 'health-tracker-v2';
+
+            const generateUUID = () => {
+                if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+                    return crypto.randomUUID();
+                }
+                return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                    const r = Math.random() * 16 | 0;
+                    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                    return v.toString(16);
+                });
+            };
+
+            const load = () => {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (!stored) {
+                    return { bodyRecords: [], exerciseRecords: [], tasks: [] };
+                }
+                try {
+                    return JSON.parse(stored);
+                } catch (e) {
+                    console.error('Failed to parse DataManager storage:', e);
+                    return { bodyRecords: [], exerciseRecords: [], tasks: [] };
+                }
+            };
+
+            const save = (data) => {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            };
+
+            const getBody = (date) => {
+                const data = load();
+                return data.bodyRecords.find(r => r.date === date) || null;
+            };
+
+            const setBody = (date, weight, bodyFat) => {
+                const data = load();
+                const index = data.bodyRecords.findIndex(r => r.date === date);
+                const record = { date, weight, bodyFat };
+                if (index >= 0) {
+                    data.bodyRecords[index] = record;
+                } else {
+                    data.bodyRecords.push(record);
+                }
+                save(data);
+                return record;
+            };
+
+            const getExercise = (date) => {
+                const data = load();
+                const record = data.exerciseRecords.find(r => r.date === date);
+                if (!record) {
+                    return { date, muscleTraining: false, cardio: false, hiit: false };
+                }
+                return record;
+            };
+
+            const setExercise = (date, muscleTraining, cardio, hiit) => {
+                const data = load();
+                const index = data.exerciseRecords.findIndex(r => r.date === date);
+                const record = { date, muscleTraining, cardio, hiit };
+                if (index >= 0) {
+                    data.exerciseRecords[index] = record;
+                } else {
+                    data.exerciseRecords.push(record);
+                }
+                save(data);
+                return record;
+            };
+
+            const getTasks = () => {
+                const data = load();
+                return data.tasks;
+            };
+
+            const getTasksByStatus = (status) => {
+                const data = load();
+                return data.tasks.filter(t => t.status === status);
+            };
+
+            const getTasksByDate = (date) => {
+                const data = load();
+                return data.tasks.filter(t => t.date === date);
+            };
+
+            const addTask = (name, date = null) => {
+                const data = load();
+                const task = { id: generateUUID(), name, status: 'idea', date };
+                data.tasks.push(task);
+                save(data);
+                return task;
+            };
+
+            const updateTask = (id, updates) => {
+                const data = load();
+                const index = data.tasks.findIndex(t => t.id === id);
+                if (index === -1) throw new Error(`Task with id ${id} not found`);
+                data.tasks[index] = { ...data.tasks[index], ...updates };
+                save(data);
+                return data.tasks[index];
+            };
+
+            const deleteTask = (id) => {
+                const data = load();
+                const index = data.tasks.findIndex(t => t.id === id);
+                if (index === -1) throw new Error(`Task with id ${id} not found`);
+                const deleted = data.tasks.splice(index, 1);
+                save(data);
+                return deleted[0];
+            };
+
+            const all = () => load();
+            const replace = (newData) => {
+                if (!newData.bodyRecords || !newData.exerciseRecords || !newData.tasks) {
+                    throw new Error('Invalid data format');
+                }
+                save(newData);
+                return newData;
+            };
+
+            return { getBody, setBody, getExercise, setExercise, getTasks, getTasksByStatus, getTasksByDate, addTask, updateTask, deleteTask, all, replace };
+        })();
+
+        // Run tests
+        const results = document.getElementById('results');
+        const tests = [];
+
+        const test = (name, fn) => {
+            try {
+                fn();
+                tests.push({ name, pass: true, error: null });
+            } catch (error) {
+                tests.push({ name, pass: false, error: error.message });
+            }
+        };
+
+        // Clear storage
+        localStorage.removeItem('health-tracker-v2');
+
+        // Tests
+        test('addTask creates task with id, name, status, date', () => {
+            const task = DataManager.addTask('テストタスク');
+            if (!task.id) throw new Error('No id');
+            if (task.name !== 'テストタスク') throw new Error('Wrong name');
+            if (task.status !== 'idea') throw new Error('Wrong status');
+            if (task.date !== null) throw new Error('Wrong date');
+        });
+
+        test('getTasks returns array with added task', () => {
+            const tasks = DataManager.getTasks();
+            if (!Array.isArray(tasks)) throw new Error('Not an array');
+            if (tasks.length !== 1) throw new Error('Wrong length');
+            if (tasks[0].name !== 'テストタスク') throw new Error('Wrong task');
+        });
+
+        test('setBody stores body record correctly', () => {
+            const body = DataManager.setBody('2026-06-01', 68.5, 18.2);
+            if (body.date !== '2026-06-01') throw new Error('Wrong date');
+            if (body.weight !== 68.5) throw new Error('Wrong weight');
+            if (body.bodyFat !== 18.2) throw new Error('Wrong bodyFat');
+        });
+
+        test('getBody retrieves stored body record', () => {
+            const body = DataManager.getBody('2026-06-01');
+            if (!body) throw new Error('No body record');
+            if (body.weight !== 68.5) throw new Error('Wrong weight');
+            if (body.bodyFat !== 18.2) throw new Error('Wrong bodyFat');
+        });
+
+        test('setExercise stores exercise record', () => {
+            const ex = DataManager.setExercise('2026-06-01', true, false, false);
+            if (ex.muscleTraining !== true) throw new Error('Wrong muscleTraining');
+            if (ex.cardio !== false) throw new Error('Wrong cardio');
+            if (ex.hiit !== false) throw new Error('Wrong hiit');
+        });
+
+        test('getExercise retrieves stored exercise', () => {
+            const ex = DataManager.getExercise('2026-06-01');
+            if (ex.muscleTraining !== true) throw new Error('Wrong muscleTraining');
+        });
+
+        test('getTasksByStatus filters correctly', () => {
+            const tasks = DataManager.getTasksByStatus('idea');
+            if (tasks.length !== 1) throw new Error('Wrong count');
+        });
+
+        test('getTasksByDate filters correctly', () => {
+            DataManager.addTask('Dated', '2026-06-01');
+            const tasks = DataManager.getTasksByDate('2026-06-01');
+            if (tasks.length !== 1) throw new Error('Wrong count');
+        });
+
+        test('updateTask modifies existing task', () => {
+            const taskId = DataManager.getTasks()[0].id;
+            const updated = DataManager.updateTask(taskId, { status: 'todo' });
+            if (updated.status !== 'todo') throw new Error('Status not updated');
+        });
+
+        test('deleteTask removes task', () => {
+            const taskId = DataManager.getTasks()[0].id;
+            DataManager.deleteTask(taskId);
+            const remaining = DataManager.getTasks().find(t => t.id === taskId);
+            if (remaining) throw new Error('Task not deleted');
+        });
+
+        test('all returns complete data object', () => {
+            const data = DataManager.all();
+            if (!data.bodyRecords || !data.exerciseRecords || !data.tasks) throw new Error('Missing data');
+            if (!Array.isArray(data.bodyRecords)) throw new Error('Not array');
+        });
+
+        test('replace overwrites all data', () => {
+            const newData = {
+                bodyRecords: [{ date: '2026-06-02', weight: 70, bodyFat: 20 }],
+                exerciseRecords: [],
+                tasks: []
+            };
+            DataManager.replace(newData);
+            const data = DataManager.all();
+            if (data.bodyRecords.length !== 1) throw new Error('Not replaced');
+        });
+
+        // Render results
+        results.innerHTML = tests.map(t => `
+            <div class="test ${t.pass ? 'pass' : 'fail'}">
+                <strong>${t.pass ? '✓' : '✗'} ${t.name}</strong>
+                ${t.error ? `<pre>${t.error}</pre>` : ''}
+            </div>
+        `).join('');
+
+        const passed = tests.filter(t => t.pass).length;
+        const total = tests.length;
+        results.innerHTML += `<div class="test ${passed === total ? 'pass' : 'fail'}"><strong>Results: ${passed}/${total} passed</strong></div>`;
+    </script>
+</body>
+</html>

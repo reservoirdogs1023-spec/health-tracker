@@ -1,0 +1,1749 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Health Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* === DESIGN TOKENS === */
+    :root {
+      --bg: #eef0f4;
+      --surface: #ffffff;
+      --surface-muted: #f7f8fa;
+      --border: #e7eaef;
+      --border-strong: #d6dae1;
+      --text: #1c2330;
+      --text-muted: #6b7686;
+      --text-soft: #9aa3b2;
+      --accent: #2f6df6;
+      --accent-hover: #1d5be0;
+      --accent-soft: #ebf2ff;
+      --accent-border: #c9dcff;
+      --green: #15a34a;
+      --green-soft: #e9f8ef;
+      --amber: #c77514;
+      --amber-soft: #fdf2e3;
+      --teal: #0d9488;
+      --teal-soft: #e4f6f3;
+      --violet: #6d4ed6;
+      --violet-soft: #f1ecfd;
+      --radius: 14px;
+      --radius-md: 10px;
+      --radius-sm: 7px;
+      --shadow-sm: 0 1px 2px rgba(20,28,45,.04), 0 1px 3px rgba(20,28,45,.05);
+      --shadow-md: 0 6px 20px rgba(20,28,45,.07);
+      --font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+    }
+
+    /* === RESET === */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      letter-spacing: -0.01em;
+    }
+
+    /* === LAYOUT === */
+    .app {
+      max-width: 1400px;
+      height: calc(100vh - 32px);
+      margin: 16px auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-md);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .header, .tabs { flex: 0 0 auto; }
+
+    /* === HEADER === */
+    .header {
+      background: var(--surface);
+      color: var(--text);
+      padding: 14px 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+    }
+    .header h1 {
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+    .header h1::before {
+      content: '';
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 4px var(--accent-soft);
+    }
+    .header-actions { display: flex; gap: 8px; }
+
+    /* === TABS === */
+    .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); background: var(--surface); padding: 0 18px; }
+    .tab-btn {
+      padding: 13px 16px;
+      border: none; background: transparent; cursor: pointer;
+      font-family: var(--font);
+      font-size: 13px; font-weight: 600; color: var(--text-muted);
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+      transition: color .15s;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    /* === TAB CONTENT === */
+    .tab-panel { display: none; }
+    .tab-panel.active { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+    #dashboard.tab-panel.active { overflow: hidden; }
+
+    /* === TRACKER LAYOUT: sticky sidebar + scrollable calendar === */
+    .tracker-body {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    /* LEFT PANEL: sticky, scrolls independently */
+    .left-panel {
+      flex: 0 0 172px;
+      position: sticky;
+      top: 0;
+      max-height: 100vh;
+      overflow-y: auto;
+      background: var(--surface-muted);
+      border-right: 1px solid var(--border);
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    /* CENTER PANEL: flex layout for records + calendar side-by-side */
+    .center-panel {
+      flex: 1;
+      min-width: 0;  /* prevents flex overflow */
+      min-height: 0;
+      padding: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* === BUTTONS === */
+    .btn {
+      padding: 9px 16px; border: 1px solid transparent; border-radius: var(--radius-sm);
+      cursor: pointer; font-family: var(--font); font-size: 13px; font-weight: 600;
+      letter-spacing: -0.01em; transition: background .15s, border-color .15s, transform .05s;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-sm { padding: 7px 12px; font-size: 12px; }
+    .btn-secondary { background: var(--surface); color: var(--text-muted); border-color: var(--border-strong); }
+    .btn-secondary:hover { background: var(--surface-muted); color: var(--text); border-color: var(--text-soft); }
+
+    /* === FORM ELEMENTS === */
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; }
+    input[type="text"],
+    input[type="number"],
+    input[type="date"] {
+      padding: 9px 11px;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      font-family: var(--font);
+      font-size: 13px;
+      color: var(--text);
+      background: var(--surface);
+      width: 100%;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    input[type="date"]:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+    input::placeholder { color: var(--text-soft); }
+
+    /* === CALENDAR NAV & STATS BAR === */
+    .calendar-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 18px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+    .calendar-nav h2 { font-size: 15px; font-weight: 700; letter-spacing: -0.02em; }
+
+    .stats-bar {
+      display: flex;
+      gap: 8px;
+      padding: 10px 18px;
+      background: var(--surface-muted);
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .stat-chip {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      color: var(--text-muted);
+      background: var(--surface);
+      padding: 5px 11px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      font-weight: 600;
+    }
+
+    /* === CONTENT WRAPPER: records + calendar side-by-side === */
+    .content-wrapper {
+      display: flex;
+      gap: 0;
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
+    }
+
+    /* === CALENDAR GRID ===
+       KEY: no height:100vh, no overflow:hidden on parents.
+       Cells use min-height only — they grow to fit content.
+    */
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      grid-template-rows: auto;          /* header row: content height */
+      grid-auto-rows: minmax(0, 1fr);    /* week rows split height evenly */
+      border-left: 1px solid var(--border);
+      border-top: 1px solid var(--border);
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
+    }
+
+    .cal-header-cell {
+      text-align: center;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-soft);
+      padding: 7px 4px;
+      background: var(--surface-muted);
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .cal-cell {
+      min-height: 0;              /* fills its grid row; scrolls if overcrowded */
+      overflow-y: auto;
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 5px;
+      background: var(--surface);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      transition: background .12s;
+    }
+    /* slim scrollbar inside crowded cells */
+    .cal-cell::-webkit-scrollbar { width: 5px; }
+    .cal-cell::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+    /* cell contents keep their height and scroll instead of squishing */
+    .cal-cell > * { flex-shrink: 0; }
+    .cal-cell:not(.empty):hover { background: var(--surface-muted); }
+
+    .cal-cell.today { background: var(--accent-soft); }
+    .cal-cell.empty { background: var(--surface-muted); }
+
+    /* drop target highlight */
+    .cal-cell.drag-over { background: var(--accent-soft); outline: 2px dashed var(--accent); outline-offset: -2px; }
+
+    .cal-day-num {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 1px;
+      line-height: 1;
+      flex-shrink: 0;
+      display: flex;
+      gap: 2px;
+      align-items: center;
+      width: 100%;
+    }
+
+    .cal-day-num > div:first-child {
+      flex-shrink: 0;
+    }
+
+    .cal-body-data {
+      font-size: 10px;
+      color: var(--text);
+      font-weight: 600;
+      line-height: 1;
+      white-space: nowrap;
+      text-align: center;
+      flex: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .cal-cell.today .cal-day-num {
+      width: 100%;
+      font-size: 11px;
+    }
+
+    .cal-cell.today .cal-day-num > div:first-child {
+      background: var(--accent);
+      color: white;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-weight: 700;
+    }
+
+    .cal-exercise-icons {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      width: 100%;
+    }
+    .cal-ex-badge {
+      display: block;
+      background: var(--surface-muted);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 5px;
+      font-size: 9px;
+      font-weight: 600;
+      color: var(--text-muted);
+      width: 100%;
+      text-align: center;
+      box-sizing: border-box;
+    }
+    /* exercise type colors — tracker badges use light tints */
+    .cal-ex-badge.ex-muscle { background: #fdecec; border-color: #f5cccc; color: #cf3a3a; }
+    .cal-ex-badge.ex-cardio { background: #eaf1ff; border-color: #c9dcff; color: #2f6df6; }
+    .cal-ex-badge.ex-hiit   { background: #fce9f5; border-color: #f1c8e4; color: #c81f93; }
+
+    /* Task cards inside calendar cells */
+    .cal-task-chip {
+      display: block;
+      background: var(--accent-soft);
+      border: 1px solid var(--accent-border);
+      border-radius: 4px;
+      padding: 2px 5px;
+      font-size: 9px;
+      color: var(--accent-hover);
+      font-weight: 600;
+      cursor: grab;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .cal-task-chip:hover { background: #ddeaff; }
+    .cal-task-chip.dragging { opacity: 0.4; }
+    .cal-task-chip.completed {
+      background: var(--green-soft);
+      border-color: #bce8cd;
+      color: var(--green);
+    }
+    .cal-task-chip.completed::before {
+      content: '✓ ';
+      font-weight: 700;
+      margin-right: 2px;
+    }
+
+    /* === DELETE ZONE === */
+    .delete-zone {
+      display: none;
+    }
+
+    /* === CONTEXT MENU === */
+    .context-menu {
+      position: fixed;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-md);
+      z-index: 10000;
+      min-width: 150px;
+      padding: 5px;
+      display: none;
+    }
+    .context-menu.show {
+      display: block;
+    }
+    .context-menu-item {
+      padding: 9px 12px;
+      cursor: pointer;
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 500;
+      border: none;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      width: 100%;
+      text-align: left;
+      color: var(--text);
+      transition: background 0.1s, color 0.1s;
+    }
+    .context-menu-item:hover,
+    .context-menu-item.selected {
+      background: var(--accent-soft);
+      color: var(--accent-hover);
+    }
+
+    /* === TASK PANEL === */
+    .task-section-title {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: var(--text-muted);
+      padding: 4px 2px 6px;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .task-section-title::before {
+      content: '';
+      width: 7px;
+      height: 7px;
+      border-radius: 2px;
+      background: currentColor;
+    }
+    .task-section-title.idea { color: var(--amber); }
+    .task-section-title.scheduled { color: var(--accent); }
+    .task-section-title.completed { color: var(--green); }
+
+    .task-input-row {
+      display: flex;
+      gap: 5px;
+      margin-bottom: 6px;
+    }
+    .task-input-row input {
+      flex: 1;
+      padding: 7px 9px;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      font-family: var(--font);
+      font-size: 12px;
+      color: var(--text);
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .task-input-row input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+    .task-input-row button {
+      padding: 7px 11px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1;
+      transition: background .15s;
+    }
+    .task-input-row button:hover { background: var(--accent-hover); }
+
+    .task-pool {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-height: 20px;
+      margin-bottom: 4px;
+    }
+
+    .task-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--amber);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text);
+      cursor: grab;
+      user-select: none;
+      box-shadow: var(--shadow-sm);
+      transition: box-shadow .15s, transform .05s;
+    }
+    .task-card:hover { box-shadow: var(--shadow-md); }
+    .task-card:active { transform: scale(0.99); }
+    .task-card.dragging { opacity: 0.4; }
+    .task-card.scheduled { border-left-color: var(--accent); }
+    .task-card.completed { border-left-color: var(--green); color: var(--text-soft); text-decoration: line-through; }
+
+    .panel-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 8px 0 6px;
+    }
+
+    /* === RECORDS PANEL === */
+    .records-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .records-panel-top {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 12px;
+      background: var(--surface-muted);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      margin-right: 12px;
+      transition: max-height 0.2s;
+      overflow: hidden;
+      width: 156px;
+      flex-shrink: 0;
+      align-self: flex-start;
+    }
+
+    .records-panel-top.collapsed {
+      max-height: 40px;
+      margin-right: 8px;
+    }
+
+    .records-panel-top > div:first-child {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-items: stretch;
+    }
+
+    .records-toggle-btn {
+      padding: 3px 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      border: 1px solid var(--border-strong);
+      background: var(--surface);
+      cursor: pointer;
+      border-radius: var(--radius-sm);
+      align-self: flex-end;
+      height: 26px;
+      width: 26px;
+      transition: background .15s, color .15s;
+    }
+    .records-toggle-btn:hover { background: var(--accent-soft); color: var(--accent); border-color: var(--accent-border); }
+
+    .records-panel-top .form-group {
+      display: contents;
+    }
+
+    .records-panel-top .form-group label {
+      display: block;
+      font-size: 10px;
+    }
+
+    .records-panel-top input[type="date"],
+    .records-panel-top input[type="number"] {
+      padding: 4px 6px;
+      font-size: 11px;
+      height: 24px;
+    }
+
+    .records-panel-top .btn {
+      padding: 4px 10px;
+      font-size: 11px;
+      height: 24px;
+    }
+
+
+    .exercise-grid-top {
+      display: flex;
+      gap: 3px;
+      grid-column: 6;
+    }
+
+    .ex-btn-top {
+      padding: 6px 8px;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      cursor: pointer;
+      font-family: var(--font);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-align: center;
+      transition: all 0.15s;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ex-btn-top:hover { background: var(--surface-muted); color: var(--text); }
+    .ex-btn-top.active {
+      background: var(--accent-soft);
+      border-color: var(--accent-border);
+      color: var(--accent-hover);
+    }
+    /* exercise type colors on the records-panel toggles (light tints) */
+    .ex-btn-top[data-ex="muscleTraining"].active { background: #fdecec; border-color: #f0b9b9; color: #cf3a3a; }
+    .ex-btn-top[data-ex="cardio"].active         { background: #eaf1ff; border-color: #c9dcff; color: #1d5be0; }
+    .ex-btn-top[data-ex="hiit"].active           { background: #fce9f5; border-color: #eeb9dd; color: #c81f93; }
+
+    .exercise-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+    }
+
+    .ex-btn {
+      padding: 6px 2px;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      cursor: pointer;
+      font-family: var(--font);
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-align: center;
+      transition: all 0.15s;
+    }
+    .ex-btn:hover { background: var(--surface-muted); }
+    .ex-btn.active {
+      background: var(--accent-soft);
+      border-color: var(--accent-border);
+      color: var(--accent-hover);
+    }
+
+    .streak-row {
+      display: none;
+    }
+
+    .streak-chip {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 6px 11px;
+      font-size: 12px;
+    }
+    .streak-chip .streak-label { color: var(--text-muted); }
+    .streak-chip .streak-num {
+      font-weight: 700;
+      color: var(--accent);
+      font-size: 14px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* === PERIOD BUTTONS === */
+    .period-btn {
+      padding: 8px 18px;
+      border: 1px solid var(--border-strong);
+      border-radius: 20px;
+      background: var(--surface);
+      color: var(--text-muted);
+      cursor: pointer;
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.15s;
+    }
+    .period-btn:hover { background: var(--surface-muted); color: var(--text); }
+    .period-btn.active {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: white;
+    }
+
+    /* === DASHBOARD === */
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      padding: 18px 20px;
+      margin-bottom: 18px;
+    }
+    /* Dashboard: fill viewport height, no scroll */
+    .dash-inner {
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 22px 24px;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .dash-periods { flex: 0 0 auto; display: flex; gap: 8px; justify-content: center; }
+
+    .chart-card {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      margin-bottom: 0;
+    }
+    .chart-card h3 {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin-bottom: 12px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+    /* Dashboard rows: charts side-by-side, split remaining height */
+    .chart-row {
+      display: grid;
+      gap: 16px;
+      flex: 1;
+      min-height: 0;
+    }
+    .chart-row.two   { grid-template-columns: repeat(2, 1fr); }
+    .chart-row.three { grid-template-columns: repeat(3, 1fr); }
+    .chart-box { position: relative; flex: 1; min-height: 0; }
+    /* Donut gauge center label */
+    .gauge-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      text-align: center;
+    }
+    .gauge-center .gauge-pct {
+      font-size: 30px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .gauge-center .gauge-sub {
+      margin-top: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+    @media (max-width: 760px) {
+      .chart-row.two, .chart-row.three { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header class="header">
+    <h1>Health Tracker</h1>
+    <div class="header-actions">
+      <button class="btn btn-secondary btn-sm" onclick="handleExport()">Export</button>
+      <button class="btn btn-secondary btn-sm" onclick="handleImport()">Import</button>
+    </div>
+    <input type="file" id="importFile" accept=".json" style="display:none">
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="tracker">Tracker</button>
+    <button class="tab-btn" data-tab="dashboard">Dashboard</button>
+  </nav>
+
+  <!-- TRACKER TAB -->
+  <div id="tracker" class="tab-panel active">
+    <!-- Month nav (outside tracker-body) -->
+    <div class="calendar-nav" id="calendarNav">
+      <button class="btn btn-secondary btn-sm" onclick="prevMonth()">← Prev</button>
+      <h2 id="monthTitle">Loading...</h2>
+      <button class="btn btn-secondary btn-sm" onclick="nextMonth()">Next →</button>
+    </div>
+
+    <div class="tracker-body">
+      <aside class="left-panel" id="leftPanel"></aside>
+      <main class="center-panel" id="centerPanel">
+        <div class="content-wrapper">
+          <div id="recordsPanelContainer" class="records-panel-top"></div>
+          <div class="calendar-grid" id="calendarGrid"></div>
+        </div>
+        <div class="delete-zone" id="deleteZone">🗑️ ここにドロップして削除</div>
+      </main>
+    </div>
+  </div>
+
+  <!-- DASHBOARD TAB -->
+  <div id="dashboard" class="tab-panel">
+    <div class="dash-inner">
+      <!-- Period filter buttons -->
+      <div class="dash-periods">
+        <button class="period-btn active" onclick="setPeriod(30, this)">直近30日</button>
+        <button class="period-btn" onclick="setPeriod(90, this)">直近90日</button>
+        <button class="period-btn" onclick="setPeriod(0, this)">全期間</button>
+      </div>
+
+      <!-- Body charts: weight + body fat side-by-side -->
+      <div class="chart-row two">
+        <div class="chart-card">
+          <h3>⚖️ 体重推移</h3>
+          <div class="chart-box"><canvas id="weightChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>🔥 体脂肪率推移</h3>
+          <div class="chart-box"><canvas id="bfChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Exercise charts: muscle + cardio + hiit side-by-side -->
+      <div class="chart-row three">
+        <div class="chart-card">
+          <h3>💪 筋トレ達成率</h3>
+          <div class="chart-box gauge-box">
+            <canvas id="muscleChart"></canvas>
+            <div class="gauge-center" id="muscleGauge"></div>
+          </div>
+        </div>
+        <div class="chart-card">
+          <h3>🏃 有酸素達成率</h3>
+          <div class="chart-box gauge-box">
+            <canvas id="cardioChart"></canvas>
+            <div class="gauge-center" id="cardioGauge"></div>
+          </div>
+        </div>
+        <div class="chart-card">
+          <h3>⚡ HIIT達成率</h3>
+          <div class="chart-box gauge-box">
+            <canvas id="hiitChart"></canvas>
+            <div class="gauge-center" id="hiitGauge"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ===== DATA MANAGER =====
+  const DataManager = (() => {
+    const KEY = 'health-tracker-v2';
+
+    const defaults = () => ({
+      bodyRecords: [],      // [{date, weight, bodyFat}]
+      exerciseRecords: [],  // [{date, muscleTraining, cardio, hiit}]
+      tasks: []             // [{id, name, status, date}]
+    });
+
+    const load = () => {
+      try {
+        const raw = localStorage.getItem(KEY);
+        const data = raw ? JSON.parse(raw) : defaults();
+        // ensure tasks array exists (migration from old format)
+        if (!data.tasks) data.tasks = [];
+        return data;
+      } catch { return defaults(); }
+    };
+
+    const save = (data) => {
+      localStorage.setItem(KEY, JSON.stringify(data));
+    };
+
+    const uuid = () => {
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+        const r = Math.random() * 16 | 0;
+        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+      });
+    };
+
+    // Body Records
+    const getBody = (date) => load().bodyRecords.find(r => r.date === date);
+    const setBody = (date, weight, bodyFat) => {
+      const d = load();
+      const i = d.bodyRecords.findIndex(r => r.date === date);
+      const rec = { date, weight: +weight, bodyFat: +bodyFat };
+      if (i >= 0) d.bodyRecords[i] = rec; else d.bodyRecords.push(rec);
+      d.bodyRecords.sort((a, b) => a.date < b.date ? -1 : 1);
+      save(d);
+    };
+
+    // Exercise Records
+    const getExercise = (date) => load().exerciseRecords.find(r => r.date === date);
+    const setExercise = (date, muscleTraining, cardio, hiit) => {
+      const d = load();
+      const i = d.exerciseRecords.findIndex(r => r.date === date);
+      const rec = { date, muscleTraining: !!muscleTraining, cardio: !!cardio, hiit: !!hiit };
+      if (i >= 0) d.exerciseRecords[i] = rec; else d.exerciseRecords.push(rec);
+      save(d);
+    };
+
+    // Tasks
+    const getTasks = () => load().tasks;
+    const getTasksByStatus = (status) => load().tasks.filter(t => t.status === status);
+    const getTasksByDate = (date) => load().tasks.filter(t => t.date === date && (t.status === 'scheduled' || t.status === 'completed'));
+    const addTask = (name) => {
+      const d = load();
+      const task = { id: uuid(), name, status: 'idea', date: null };
+      d.tasks.push(task);
+      save(d);
+      return task;
+    };
+    const updateTask = (id, patch) => {
+      const d = load();
+      const t = d.tasks.find(t => t.id === id);
+      if (t) { Object.assign(t, patch); save(d); }
+    };
+    const deleteTask = (id) => {
+      const d = load();
+      const task = d.tasks.find(t => t.id === id);
+      if (!task) return;
+
+      // IDEA の場合のみ完全削除、scheduled/completed は IDEA に戻す
+      if (task.status === 'idea') {
+        d.tasks = d.tasks.filter(t => t.id !== id);
+      } else {
+        task.status = 'idea';
+        task.date = null;
+      }
+      save(d);
+    };
+
+    // All data (for export/import)
+    const all = () => load();
+    const replace = (data) => save(data);
+
+    return { getBody, setBody, getExercise, setExercise,
+             getTasks, getTasksByStatus, getTasksByDate,
+             addTask, updateTask, deleteTask, all, replace };
+  })();
+
+  // Tab switching
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.tab).classList.add('active');
+      if (btn.dataset.tab === 'dashboard') renderCharts();
+    });
+  });
+
+  // ===== CALENDAR =====
+  let currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  let draggedId = null;
+
+  const TODAY = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  })();
+
+  function toDateStr(y, m, d) {
+    return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  }
+
+  function renderCalendar() {
+    const y = currentMonth.getFullYear();
+    const m = currentMonth.getMonth();
+    const daysInMonth = new Date(y, m+1, 0).getDate();
+    const firstDow = new Date(y, m, 1).getDay(); // 0=Sun
+
+    // Month title
+    document.getElementById('monthTitle').textContent =
+      currentMonth.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long' });
+
+    // Calendar grid
+    const grid = document.getElementById('calendarGrid');
+    grid.innerHTML = '';
+
+    // Headers
+    ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(day => {
+      const h = document.createElement('div');
+      h.className = 'cal-header-cell';
+      h.textContent = day;
+      grid.appendChild(h);
+    });
+
+    // Empty cells before day 1
+    for (let i = 0; i < firstDow; i++) {
+      const cell = document.createElement('div');
+      cell.className = 'cal-cell empty';
+      grid.appendChild(cell);
+    }
+
+    // Day cells
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = toDateStr(y, m, day);
+      const cell = document.createElement('div');
+      cell.className = 'cal-cell' + (dateStr === TODAY ? ' today' : '');
+      cell.dataset.date = dateStr;
+
+      // Day number
+      const num = document.createElement('div');
+      num.className = 'cal-day-num';
+
+      const dayDiv = document.createElement('div');
+      dayDiv.textContent = day;
+      num.appendChild(dayDiv);
+
+      // Body data (weight / body fat)
+      const bodyRec = DataManager.getBody(dateStr);
+      if (bodyRec && bodyRec.weight != null && bodyRec.bodyFat != null) {
+        const bodyData = document.createElement('div');
+        bodyData.className = 'cal-body-data';
+        bodyData.textContent = `${bodyRec.weight}kg/${bodyRec.bodyFat}%`;
+        num.appendChild(bodyData);
+      }
+
+      cell.appendChild(num);
+
+      // Exercise icons
+      const ex = DataManager.getExercise(dateStr);
+      const exData = [];
+      if (ex?.muscleTraining) exData.push({ label: '筋トレ', cls: 'ex-muscle' });
+      if (ex?.cardio)         exData.push({ label: '有酸素', cls: 'ex-cardio' });
+      if (ex?.hiit)           exData.push({ label: 'HIIT',  cls: 'ex-hiit' });
+      if (exData.length) {
+        const iconRow = document.createElement('div');
+        iconRow.className = 'cal-exercise-icons';
+        exData.forEach(({ label, cls }) => {
+          const badge = document.createElement('div');
+          badge.className = 'cal-ex-badge ' + cls;
+          badge.textContent = label;
+          iconRow.appendChild(badge);
+        });
+        cell.appendChild(iconRow);
+      }
+
+      // Task chips
+      DataManager.getTasksByDate(dateStr).forEach(task => {
+        cell.appendChild(makeCalTaskChip(task));
+      });
+
+      // Click to select date
+      cell.addEventListener('click', e => {
+        if (e.target.classList.contains('cal-task-chip')) return; // Skip if clicking task
+        document.getElementById('recordDate').value = dateStr;
+        renderRecordsPanel();
+      });
+
+      // Drop events
+      cell.addEventListener('dragover', e => {
+        e.preventDefault();
+        cell.classList.add('drag-over');
+      });
+      cell.addEventListener('dragleave', () => cell.classList.remove('drag-over'));
+      cell.addEventListener('drop', e => {
+        e.preventDefault();
+        cell.classList.remove('drag-over');
+        if (!draggedId) return;
+        DataManager.updateTask(draggedId, { status: 'scheduled', date: dateStr });
+        draggedId = null;
+        renderAll();
+      });
+
+      grid.appendChild(cell);
+    }
+  }
+
+  function makeCalTaskChip(task) {
+    const chip = document.createElement('div');
+    chip.className = 'cal-task-chip';
+    if (task.status === 'completed') chip.classList.add('completed');
+    chip.textContent = task.name;
+    chip.draggable = true;
+    chip.dataset.taskId = task.id;
+
+    chip.addEventListener('dragstart', e => {
+      draggedId = task.id;
+      chip.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    chip.addEventListener('dragend', () => chip.classList.remove('dragging'));
+
+    chip.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (e.shiftKey) {
+        // Shift+Click to toggle completed
+        const newStatus = task.status === 'completed' ? 'scheduled' : 'completed';
+        DataManager.updateTask(task.id, { ...task, status: newStatus });
+        renderAll();
+      } else {
+        showTaskEditDialog(task);
+      }
+    });
+
+    chip.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      showContextMenu(task, e.clientX, e.clientY);
+    });
+
+    return chip;
+  }
+
+  let currentContextTask = null;
+  let currentContextMenuIndex = 0;
+
+  function showContextMenu(task, x, y) {
+    currentContextTask = task;
+    currentContextMenuIndex = 0;
+
+    const menu = document.getElementById('contextMenu');
+    menu.innerHTML = '';
+    menu.classList.remove('show');
+
+    const items = [
+      { label: '内容変更', action: 'edit' }
+    ];
+
+    // Add status-specific options
+    if (task.status === 'completed') {
+      items.push({ label: '未完に戻す', action: 'undo-complete' });
+    } else if (task.status !== 'completed') {
+      items.push({ label: '完了にする', action: 'complete' });
+    }
+
+    items.push({ label: '削除する', action: 'delete' });
+
+    items.forEach((item, idx) => {
+      const btn = document.createElement('button');
+      btn.className = 'context-menu-item' + (idx === 0 ? ' selected' : '');
+      btn.textContent = item.label;
+      btn.dataset.action = item.action;
+      btn.addEventListener('click', () => executeContextMenuAction(item.action));
+      btn.addEventListener('mouseenter', () => {
+        document.querySelectorAll('.context-menu-item').forEach(el => el.classList.remove('selected'));
+        btn.classList.add('selected');
+        currentContextMenuIndex = idx;
+      });
+      menu.appendChild(btn);
+    });
+
+    menu.style.left = x + 'px';
+    menu.style.top = y + 'px';
+    menu.classList.add('show');
+
+    // Keyboard navigation
+    const handleKeyDown = (e) => {
+      const items = menu.querySelectorAll('.context-menu-item');
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        currentContextMenuIndex = (currentContextMenuIndex + 1) % items.length;
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        currentContextMenuIndex = (currentContextMenuIndex - 1 + items.length) % items.length;
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const action = items[currentContextMenuIndex].dataset.action;
+        executeContextMenuAction(action);
+        return;
+      } else if (e.key === 'Escape') {
+        closeContextMenu();
+        return;
+      }
+
+      items.forEach(el => el.classList.remove('selected'));
+      items[currentContextMenuIndex].classList.add('selected');
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('click', closeContextMenu);
+
+    menu._keyHandler = handleKeyDown;
+  }
+
+  function closeContextMenu() {
+    const menu = document.getElementById('contextMenu');
+    menu.classList.remove('show');
+    document.removeEventListener('keydown', menu._keyHandler);
+    document.removeEventListener('click', closeContextMenu);
+  }
+
+  function executeContextMenuAction(action) {
+    if (!currentContextTask) return;
+    closeContextMenu();
+
+    if (action === 'edit') {
+      showTaskEditDialog(currentContextTask);
+    } else if (action === 'complete') {
+      DataManager.updateTask(currentContextTask.id, { ...currentContextTask, status: 'completed' });
+      renderAll();
+    } else if (action === 'undo-complete') {
+      DataManager.updateTask(currentContextTask.id, { ...currentContextTask, status: 'scheduled' });
+      renderAll();
+    } else if (action === 'delete') {
+      DataManager.deleteTask(currentContextTask.id);
+      renderAll();
+    }
+  }
+
+  function showTaskEditDialog(task) {
+    const name = prompt('タスク名:', task.name);
+    if (name === null) return;
+
+    // Status selection via confirm dialogs
+    let status = task.status;
+    const statusOptions = [
+      { label: '💡 IDEA', value: 'idea' },
+      { label: '📅 SCHEDULED', value: 'scheduled' },
+      { label: '✅ COMPLETED', value: 'completed' }
+    ];
+
+    // Show current status and ask for change
+    const changeStatus = confirm(`現在: ${status}\n\nステータスを変更しますか？`);
+    if (changeStatus) {
+      // Show status selector
+      const newStatus = prompt(
+        'ステータスを選択:\n1 = IDEA\n2 = SCHEDULED\n3 = COMPLETED',
+        '1'
+      );
+      if (newStatus !== null) {
+        if (newStatus === '1') status = 'idea';
+        else if (newStatus === '2') status = 'scheduled';
+        else if (newStatus === '3') status = 'completed';
+      }
+    }
+
+    DataManager.updateTask(task.id, { name, status, date: task.date });
+    renderAll();
+  }
+
+  // Delete zone
+  document.getElementById('deleteZone').addEventListener('dragover', e => {
+    e.preventDefault();
+    document.getElementById('deleteZone').classList.add('drag-over');
+  });
+  document.getElementById('deleteZone').addEventListener('dragleave', () => {
+    document.getElementById('deleteZone').classList.remove('drag-over');
+  });
+  document.getElementById('deleteZone').addEventListener('drop', e => {
+    e.preventDefault();
+    document.getElementById('deleteZone').classList.remove('drag-over');
+    if (!draggedId) return;
+    DataManager.deleteTask(draggedId);
+    draggedId = null;
+    renderAll();
+  });
+
+  function prevMonth() {
+    currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
+    renderCalendar();
+  }
+  function nextMonth() {
+    currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
+    renderCalendar();
+  }
+
+  // ===== TASK PANEL =====
+  function renderTaskPanel() {
+    const panel = document.getElementById('leftPanel');
+
+    // Create or reuse taskSection
+    let taskSection = document.getElementById('taskSection');
+    if (!taskSection) {
+      taskSection = document.createElement('div');
+      taskSection.id = 'taskSection';
+      panel.appendChild(taskSection);
+    }
+
+    const ideaTasks      = DataManager.getTasksByStatus('idea');
+    const scheduledTasks = DataManager.getTasksByStatus('scheduled');
+    const completedTasks = DataManager.getTasksByStatus('completed');
+
+    taskSection.innerHTML = `
+      <div class="task-section-title">IDEA</div>
+      <div class="task-input-row">
+        <input type="text" id="taskInput" placeholder="新しいタスク..." />
+        <button onclick="handleAddTask()">+</button>
+      </div>
+      <div class="task-pool" id="poolIdea"></div>
+      <hr class="panel-divider">
+      <div class="task-section-title">SCHEDULED</div>
+      <div class="task-pool" id="poolScheduled"></div>
+      <hr class="panel-divider">
+      <div class="task-section-title">COMPLETED</div>
+      <div class="task-pool" id="poolCompleted"></div>
+    `;
+
+    // Add color classes to section titles
+    const titles = taskSection.querySelectorAll('.task-section-title');
+    titles[0].classList.add('idea');
+    titles[1].classList.add('scheduled');
+    titles[2].classList.add('completed');
+
+    // Populate pools
+    ideaTasks.forEach(t      => document.getElementById('poolIdea').appendChild(makeTaskCard(t)));
+    scheduledTasks.forEach(t => document.getElementById('poolScheduled').appendChild(makeTaskCard(t)));
+    completedTasks.forEach(t => document.getElementById('poolCompleted').appendChild(makeTaskCard(t)));
+
+    // Enter key on input
+    document.getElementById('taskInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') handleAddTask();
+    });
+  }
+
+  function makeTaskCard(task) {
+    const card = document.createElement('div');
+    card.className = 'task-card' + (task.status !== 'idea' ? ' ' + task.status : '');
+    card.draggable = true;
+    card.dataset.taskId = task.id;
+
+    // Display content with checkmark if completed
+    const content = task.status === 'completed' ? `✓ ${task.name}` : task.name;
+    card.textContent = content;
+
+    card.addEventListener('dragstart', e => {
+      draggedId = task.id;
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    card.addEventListener('dragend', () => card.classList.remove('dragging'));
+
+    // Click to edit or Shift+Click to toggle completed
+    card.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (e.shiftKey) {
+        const newStatus = task.status === 'completed' ? 'scheduled' : 'completed';
+        DataManager.updateTask(task.id, { ...task, status: newStatus });
+        renderAll();
+      } else {
+        showTaskEditDialog(task);
+      }
+    });
+
+    // Right-click to show context menu
+    card.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      showContextMenu(task, e.clientX, e.clientY);
+    });
+
+    return card;
+  }
+
+  function handleAddTask() {
+    const input = document.getElementById('taskInput');
+    if (!input) return;
+    const name = input.value.trim();
+    if (!name) return;
+    DataManager.addTask(name);
+    input.value = '';
+    renderAll();
+  }
+
+  // ===== RECORDS PANEL =====
+  function renderRecordsPanel() {
+    const container = document.getElementById('recordsPanelContainer');
+    if (!container) return;
+
+    // Get selected date (preserve existing selection, default to TODAY)
+    const existingInput = document.getElementById('recordDate');
+    const selectedDate = existingInput ? existingInput.value : TODAY;
+
+    // Get stored data for selected date
+    const bodyRec = DataManager.getBody(selectedDate) || {};
+    const exRec   = DataManager.getExercise(selectedDate) || {};
+
+    container.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.7px; color:var(--text-muted);">記録</div>
+        <button class="records-toggle-btn" onclick="toggleRecordsPanel()" title="折りたたむ/展開">−</button>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <div class="form-group">
+          <label>日付</label>
+          <input type="date" id="recordDate" value="${selectedDate}" />
+        </div>
+        <div class="form-group">
+          <label>体重</label>
+          <input type="number" id="recordWeight" step="0.1" min="0" max="300"
+            value="${bodyRec.weight != null ? bodyRec.weight : ''}" placeholder="0.0" />
+        </div>
+        <div class="form-group">
+          <label>体脂肪</label>
+          <input type="number" id="recordBodyFat" step="0.1" min="0" max="100"
+            value="${bodyRec.bodyFat != null ? bodyRec.bodyFat : ''}" placeholder="0.0" />
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="handleSaveBody()" style="width: 100%;">保存</button>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 3px; margin-top: 6px;">
+        <button class="ex-btn-top${exRec.muscleTraining ? ' active' : ''}"
+          data-ex="muscleTraining" onclick="handleToggleEx(this)" style="width: 100%;">筋トレ</button>
+        <button class="ex-btn-top${exRec.cardio ? ' active' : ''}"
+          data-ex="cardio" onclick="handleToggleEx(this)" style="width: 100%;">有酸素</button>
+        <button class="ex-btn-top${exRec.hiit ? ' active' : ''}"
+          data-ex="hiit" onclick="handleToggleEx(this)" style="width: 100%;">HIIT</button>
+      </div>
+    `;
+
+    // Bind date change event
+    document.getElementById('recordDate').addEventListener('change', () => {
+      renderRecordsPanel();
+      renderCalendar();
+    });
+  }
+
+  function handleSaveBody() {
+    const dateInput = document.getElementById('recordDate');
+    const weightInput = document.getElementById('recordWeight');
+    const bodyFatInput = document.getElementById('recordBodyFat');
+    if (!dateInput || !weightInput || !bodyFatInput) return;
+
+    const date = dateInput.value;
+    const weight = weightInput.value.trim();
+    const bodyFat = bodyFatInput.value.trim();
+
+    if (!weight || !bodyFat) {
+      alert('体重と体脂肪率を両方入力してください。');
+      return;
+    }
+
+    DataManager.setBody(date, weight, bodyFat);
+    renderAll();
+  }
+
+  function toggleRecordsPanel() {
+    const container = document.getElementById('recordsPanelContainer');
+    if (!container) return;
+    container.classList.toggle('collapsed');
+    const btn = container.querySelector('.records-toggle-btn');
+    if (btn) {
+      btn.textContent = container.classList.contains('collapsed') ? '＋' : '−';
+    }
+  }
+
+  function handleToggleEx(btn) {
+    const dateInput = document.getElementById('recordDate');
+    if (!dateInput) return;
+
+    const date = dateInput.value;
+    const exType = btn.dataset.ex;
+    const exRec = DataManager.getExercise(date) || {};
+
+    // Toggle the selected type
+    exRec[exType] = !exRec[exType];
+
+    DataManager.setExercise(
+      date,
+      !!exRec.muscleTraining,
+      !!exRec.cardio,
+      !!exRec.hiit
+    );
+    renderAll();
+  }
+
+  function renderStreaks() {
+    const streakRow = document.getElementById('streakRow');
+    if (!streakRow) return;
+
+    // Helper: count consecutive days backward from TODAY where checkFn(dateStr) is truthy
+    function calcStreak(checkFn) {
+      let count = 0;
+      const [y, mo, d] = TODAY.split('-').map(Number);
+      let cur = new Date(y, mo - 1, d);
+      while (true) {
+        const dateStr = toDateStr(cur.getFullYear(), cur.getMonth(), cur.getDate());
+        if (!checkFn(dateStr)) break;
+        count++;
+        cur.setDate(cur.getDate() - 1);
+      }
+      return count;
+    }
+
+    const streaks = [
+      { icon: '💪', label: '筋トレ連続',  count: calcStreak(d => DataManager.getExercise(d)?.muscleTraining) },
+      { icon: '🏃', label: '有酸素連続',  count: calcStreak(d => DataManager.getExercise(d)?.cardio) },
+      { icon: '⚡', label: 'HIIT連続',    count: calcStreak(d => DataManager.getExercise(d)?.hiit) },
+      { icon: '✅', label: 'タスク連続',  count: calcStreak(d => DataManager.getTasksByDate(d).length > 0) },
+    ];
+
+    streakRow.innerHTML = streaks.map(s => `
+      <div class="streak-chip">
+        <span class="streak-label">${s.icon} ${s.label}</span>
+        <span class="streak-num">${s.count}日</span>
+      </div>
+    `).join('');
+  }
+
+  // ===== MAIN RENDER & INIT =====
+  function renderAll() {
+    renderCalendar();
+    renderTaskPanel();
+    renderRecordsPanel();
+  }
+
+  // ===== EXPORT =====
+  function exportData() {
+    const data = DataManager.all();
+    const jsonString = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    link.href = url;
+    link.download = `health-tracker-export-${dateStr}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    alert('データをエクスポートしました');
+  }
+
+  // ===== IMPORT =====
+  function handleExport() { exportData(); }
+
+  function handleImport() {
+    const importFile = document.getElementById('importFile');
+    importFile.onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const data = JSON.parse(event.target.result);
+          validateImportData(data);
+          DataManager.replace(data);
+          renderAll();
+          alert('データをインポートしました');
+          importFile.value = '';
+        } catch (err) {
+          alert('インポート失敗: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+    };
+    importFile.click();
+  }
+
+  function validateImportData(data) {
+    if (!Array.isArray(data.bodyRecords))
+      throw new Error('bodyRecords が配列ではありません');
+    if (!Array.isArray(data.exerciseRecords))
+      throw new Error('exerciseRecords が配列ではありません');
+    if (!Array.isArray(data.tasks))
+      throw new Error('tasks が配列ではありません');
+
+    data.bodyRecords.forEach((r, i) => {
+      if (typeof r.date !== 'string')
+        throw new Error(`bodyRecords[${i}].date が文字列ではありません`);
+      if (typeof r.weight !== 'number')
+        throw new Error(`bodyRecords[${i}].weight が数値ではありません`);
+      if (typeof r.bodyFat !== 'number')
+        throw new Error(`bodyRecords[${i}].bodyFat が数値ではありません`);
+    });
+
+    data.exerciseRecords.forEach((r, i) => {
+      if (typeof r.date !== 'string')
+        throw new Error(`exerciseRecords[${i}].date が文字列ではありません`);
+      if (typeof r.muscleTraining !== 'boolean')
+        throw new Error(`exerciseRecords[${i}].muscleTraining が真偽値ではありません`);
+      if (typeof r.cardio !== 'boolean')
+        throw new Error(`exerciseRecords[${i}].cardio が真偽値ではありません`);
+      if (typeof r.hiit !== 'boolean')
+        throw new Error(`exerciseRecords[${i}].hiit が真偽値ではありません`);
+    });
+
+    data.tasks.forEach((t, i) => {
+      if (typeof t.id !== 'string')
+        throw new Error(`tasks[${i}].id が文字列ではありません`);
+      if (typeof t.name !== 'string')
+        throw new Error(`tasks[${i}].name が文字列ではありません`);
+      if (typeof t.status !== 'string')
+        throw new Error(`tasks[${i}].status が文字列ではありません`);
+      if (t.date !== null && typeof t.date !== 'string')
+        throw new Error(`tasks[${i}].date が null または文字列ではありません`);
+    });
+  }
+
+  function importData(e) { /* legacy: handled by handleImport via onchange */ }
+
+  // ===== DASHBOARD =====
+  let activePeriod = 30;
+  let charts = {};
+
+  function setPeriod(days, btn) {
+    activePeriod = days;
+    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderCharts();
+  }
+
+  function destroyChart(id) {
+    if (charts[id]) {
+      charts[id].destroy();
+      delete charts[id];
+    }
+  }
+
+  function renderCharts() {
+    const data = DataManager.all();
+
+    // Calculate cutoff date
+    let cutoff = null;
+    if (activePeriod > 0) {
+      const d = new Date();
+      d.setDate(d.getDate() - activePeriod);
+      cutoff = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    }
+
+    // Filter records
+    const bodyRecords = cutoff
+      ? data.bodyRecords.filter(r => r.date >= cutoff)
+      : data.bodyRecords;
+    const exerciseRecords = cutoff
+      ? data.exerciseRecords.filter(r => r.date >= cutoff)
+      : data.exerciseRecords;
+
+    // Destroy existing charts
+    ['weightChart', 'bfChart', 'muscleChart', 'cardioChart', 'hiitChart'].forEach(destroyChart);
+
+    // --- Line charts (weight & body fat) ---
+    if (bodyRecords.length > 0) {
+      const labels = bodyRecords.map(r => r.date);
+
+      // Weight line chart
+      const weightCtx = document.getElementById('weightChart').getContext('2d');
+      charts['weightChart'] = new Chart(weightCtx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: '体重 (kg)',
+            data: bodyRecords.map(r => r.weight),
+            borderColor: '#2f6df6',
+            backgroundColor: 'rgba(47,109,246,0.10)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 3,
+            pointBackgroundColor: '#2f6df6',
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: false } }
+        }
+      });
+
+      // Body fat line chart
+      const bfCtx = document.getElementById('bfChart').getContext('2d');
+      charts['bfChart'] = new Chart(bfCtx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: '体脂肪率 (%)',
+            data: bodyRecords.map(r => r.bodyFat),
+            borderColor: '#c77514',
+            backgroundColor: 'rgba(199,117,20,0.10)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 3,
+            pointBackgroundColor: '#c77514',
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: false } }
+        }
+      });
+    }
+
+    // --- Donut gauges (achievement rate over the selected period) ---
+    // Total = number of calendar days in the selected window.
+    let totalDays;
+    if (activePeriod > 0) {
+      totalDays = activePeriod;
+    } else {
+      // 全期間: from the earliest record date to today (inclusive)
+      const allDates = [...data.bodyRecords, ...data.exerciseRecords].map(r => r.date);
+      if (allDates.length) {
+        const min = allDates.reduce((a, b) => a < b ? a : b);
+        const [y, mo, dd] = min.split('-').map(Number);
+        const start = new Date(y, mo - 1, dd);
+        const now = new Date(); now.setHours(0, 0, 0, 0);
+        totalDays = Math.floor((now - start) / 86400000) + 1;
+      } else {
+        totalDays = 0;
+      }
+    }
+
+    const exTypes = [
+      { key: 'muscleTraining', chartId: 'muscleChart', gaugeId: 'muscleGauge', color: '#d61f2b' }, // 赤
+      { key: 'cardio',         chartId: 'cardioChart', gaugeId: 'cardioGauge', color: '#1f5fe0' }, // 青
+      { key: 'hiit',           chartId: 'hiitChart',   gaugeId: 'hiitGauge',   color: '#c4119a' }, // マゼンタ
+    ];
+
+    exTypes.forEach(({ key, chartId, gaugeId, color }) => {
+      const done = exerciseRecords.filter(r => r[key]).length;
+      const remaining = Math.max(totalDays - done, 0);
+      const pct = totalDays > 0 ? Math.min(Math.round((done / totalDays) * 100), 100) : 0;
+
+      const ctx = document.getElementById(chartId).getContext('2d');
+      charts[chartId] = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['達成', '未達成'],
+          datasets: [{
+            data: [done, remaining || (done === 0 ? 1 : 0)],
+            backgroundColor: [color, '#eaedf2'],
+            borderWidth: 0,
+            hoverOffset: 0,
+          }]
+        },
+        options: {
+          cutout: '72%',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { enabled: false } }
+        }
+      });
+
+      // Center label
+      const gauge = document.getElementById(gaugeId);
+      if (gauge) {
+        gauge.innerHTML =
+          `<div class="gauge-pct" style="color:${color}">${pct}%</div>` +
+          `<div class="gauge-sub">${done}/${totalDays}日</div>`;
+      }
+    });
+  }
+
+  // Initialize
+  renderAll();
+</script>
+
+<!-- CONTEXT MENU -->
+<div class="context-menu" id="contextMenu"></div>
+</body>
+</html>
