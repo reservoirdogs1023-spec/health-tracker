@@ -5,7 +5,9 @@ function createCachingBackend(inner) {
   const cache = {}; // table -> Promise<row[]>
 
   const list = (table) => {
-    if (!cache[table]) cache[table] = inner.list(table);
+    if (!cache[table]) {
+      cache[table] = inner.list(table).catch(e => { delete cache[table]; throw e; });
+    }
     return cache[table];
   };
 

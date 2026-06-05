@@ -840,7 +840,7 @@
         </div>
       </div>
 
-      <!-- Exercise charts: muscle + cardio + hiit side-by-side -->
+      <!-- Exercise charts: 筋トレ + RUN + HIIT side-by-side -->
       <div class="chart-row three">
         <div class="chart-card">
           <h3>💪 筋トレ達成率</h3>
@@ -850,7 +850,7 @@
           </div>
         </div>
         <div class="chart-card">
-          <h3>🏃 有酸素達成率</h3>
+          <h3>🏃 RUN達成率</h3>
           <div class="chart-box gauge-box">
             <canvas id="cardioChart"></canvas>
             <div class="gauge-center" id="cardioGauge"></div>
@@ -1152,7 +1152,9 @@
       }
     }
 
-    DataManager.updateTask(task.id, { name, status, date: task.date }).then(() => renderAll());
+    DataManager.updateTask(task.id, { name, status, date: task.date })
+      .then(() => renderAll())
+      .catch(e => { showError('保存に失敗しました: ' + e.message); console.error(e); });
   }
 
   // Delete zone
@@ -1172,13 +1174,15 @@
     await renderAll();
   });
 
-  function prevMonth() {
+  async function prevMonth() {
     currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
-    renderCalendar();
+    try { await renderCalendar(); }
+    catch (e) { showError('接続できません。通信環境を確認してください'); console.error(e); }
   }
-  function nextMonth() {
+  async function nextMonth() {
     currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
-    renderCalendar();
+    try { await renderCalendar(); }
+    catch (e) { showError('接続できません。通信環境を確認してください'); console.error(e); }
   }
 
   // ===== TASK PANEL =====
@@ -1599,15 +1603,20 @@
       error ? `エラー: ${error.message}` : 'メールを確認してリンクをタップしてください';
   });
 
+  let appStarted = false;
+  async function ensureStarted() {
+    if (appStarted) return;
+    appStarted = true;
+    document.getElementById('auth-screen').style.display = 'none';
+    await startApp();
+  }
+
   (async () => {
     const { data: { session } } = await sb.auth.getSession();
-    if (session) { await startApp(); }
+    if (session) { await ensureStarted(); }
     else { showAuthScreen(); }
     sb.auth.onAuthStateChange((_event, s) => {
-      if (s) {
-        document.getElementById('auth-screen').style.display = 'none';
-        startApp();
-      }
+      if (s) ensureStarted();
     });
   })();
 </script>
