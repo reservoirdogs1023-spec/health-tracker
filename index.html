@@ -764,16 +764,31 @@
       .chart-row.two, .chart-row.three { grid-template-columns: 1fr; }
     }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // === Supabase config (fill in after setup) ===
+    const SUPABASE_URL = 'https://YOUR-PROJECT.supabase.co';
+    const SUPABASE_ANON_KEY = 'YOUR-ANON-KEY';
+  </script>
+  <script src="js/backend-memory.js"></script>
+  <script src="js/backend-supabase.js"></script>
+  <script src="js/data-manager.js"></script>
 </head>
 <body>
+  <div id="auth-screen" style="display:none; max-width:360px; margin:15vh auto; font-family:sans-serif; text-align:center;">
+    <h2>Health Tracker</h2>
+    <p>メールアドレスを入力し、届いたリンクからログインしてください。</p>
+    <input id="auth-email" type="email" placeholder="you@example.com"
+           style="width:100%; padding:.6rem; margin:.5rem 0; box-sizing:border-box;" />
+    <button id="auth-send" style="width:100%; padding:.6rem;">ログインリンクを送る</button>
+    <p id="auth-msg" style="color:#1d5be0; min-height:1.2em;"></p>
+  </div>
+  <div id="app-error" style="display:none; position:fixed; top:0; left:0; right:0;
+       background:#cf3a3a; color:#fff; padding:.6rem; text-align:center; z-index:9999;"></div>
 <div class="app">
   <header class="header">
     <h1>Health Tracker</h1>
-    <div class="header-actions">
-      <button class="btn btn-secondary btn-sm" onclick="handleExport()">Export</button>
-      <button class="btn btn-secondary btn-sm" onclick="handleImport()">Import</button>
-    </div>
-    <input type="file" id="importFile" accept=".json" style="display:none">
+    <div class="header-actions"></div>
   </header>
 
   <nav class="tabs">
@@ -853,98 +868,10 @@
 </div>
 
 <script>
-  // ===== DATA MANAGER =====
-  const DataManager = (() => {
-    const KEY = 'health-tracker-v2';
+  let DataManager; // assigned at startup via createDataManager(createSupabaseBackend(sb))
 
-    const defaults = () => ({
-      bodyRecords: [],      // [{date, weight, bodyFat}]
-      exerciseRecords: [],  // [{date, muscleTraining, cardio, hiit}]
-      tasks: []             // [{id, name, status, date}]
-    });
-
-    const load = () => {
-      try {
-        const raw = localStorage.getItem(KEY);
-        const data = raw ? JSON.parse(raw) : defaults();
-        // ensure tasks array exists (migration from old format)
-        if (!data.tasks) data.tasks = [];
-        return data;
-      } catch { return defaults(); }
-    };
-
-    const save = (data) => {
-      localStorage.setItem(KEY, JSON.stringify(data));
-    };
-
-    const uuid = () => {
-      if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
-      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-        const r = Math.random() * 16 | 0;
-        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-      });
-    };
-
-    // Body Records
-    const getBody = (date) => load().bodyRecords.find(r => r.date === date);
-    const setBody = (date, weight, bodyFat) => {
-      const d = load();
-      const i = d.bodyRecords.findIndex(r => r.date === date);
-      const rec = { date, weight: +weight, bodyFat: +bodyFat };
-      if (i >= 0) d.bodyRecords[i] = rec; else d.bodyRecords.push(rec);
-      d.bodyRecords.sort((a, b) => a.date < b.date ? -1 : 1);
-      save(d);
-    };
-
-    // Exercise Records
-    const getExercise = (date) => load().exerciseRecords.find(r => r.date === date);
-    const setExercise = (date, muscleTraining, cardio, hiit) => {
-      const d = load();
-      const i = d.exerciseRecords.findIndex(r => r.date === date);
-      const rec = { date, muscleTraining: !!muscleTraining, cardio: !!cardio, hiit: !!hiit };
-      if (i >= 0) d.exerciseRecords[i] = rec; else d.exerciseRecords.push(rec);
-      save(d);
-    };
-
-    // Tasks
-    const getTasks = () => load().tasks;
-    const getTasksByStatus = (status) => load().tasks.filter(t => t.status === status);
-    const getTasksByDate = (date) => load().tasks.filter(t => t.date === date && (t.status === 'scheduled' || t.status === 'completed'));
-    const addTask = (name) => {
-      const d = load();
-      const task = { id: uuid(), name, status: 'idea', date: null };
-      d.tasks.push(task);
-      save(d);
-      return task;
-    };
-    const updateTask = (id, patch) => {
-      const d = load();
-      const t = d.tasks.find(t => t.id === id);
-      if (t) { Object.assign(t, patch); save(d); }
-    };
-    const deleteTask = (id) => {
-      const d = load();
-      const task = d.tasks.find(t => t.id === id);
-      if (!task) return;
-
-      // IDEA の場合のみ完全削除、scheduled/completed は IDEA に戻す
-      if (task.status === 'idea') {
-        d.tasks = d.tasks.filter(t => t.id !== id);
-      } else {
-        task.status = 'idea';
-        task.date = null;
-      }
-      save(d);
-    };
-
-    // All data (for export/import)
-    const all = () => load();
-    const replace = (data) => save(data);
-
-    return { getBody, setBody, getExercise, setExercise,
-             getTasks, getTasksByStatus, getTasksByDate,
-             addTask, updateTask, deleteTask, all, replace };
-  })();
+  // Exercise icon map
+  const EX_ICON = { '筋トレ': '💪', 'RUN': '🏃', 'WALKING': '🚶', 'BIKE': '🚴', 'HIIT': '⚡' };
 
   // Tab switching
   document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -953,7 +880,7 @@
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById(btn.dataset.tab).classList.add('active');
-      if (btn.dataset.tab === 'dashboard') renderCharts();
+      if (btn.dataset.tab === 'dashboard') renderCharts().catch(e => showError('チャート読み込みエラー'));
     });
   });
 
@@ -970,7 +897,7 @@
     return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
   }
 
-  function renderCalendar() {
+  async function renderCalendar() {
     const y = currentMonth.getFullYear();
     const m = currentMonth.getMonth();
     const daysInMonth = new Date(y, m+1, 0).getDate();
@@ -1015,7 +942,7 @@
       num.appendChild(dayDiv);
 
       // Body data (weight / body fat)
-      const bodyRec = DataManager.getBody(dateStr);
+      const bodyRec = await DataManager.getBody(dateStr);
       if (bodyRec && bodyRec.weight != null && bodyRec.bodyFat != null) {
         const bodyData = document.createElement('div');
         bodyData.className = 'cal-body-data';
@@ -1026,33 +953,25 @@
       cell.appendChild(num);
 
       // Exercise icons
-      const ex = DataManager.getExercise(dateStr);
-      const exData = [];
-      if (ex?.muscleTraining) exData.push({ label: '筋トレ', cls: 'ex-muscle' });
-      if (ex?.cardio)         exData.push({ label: '有酸素', cls: 'ex-cardio' });
-      if (ex?.hiit)           exData.push({ label: 'HIIT',  cls: 'ex-hiit' });
-      if (exData.length) {
+      const types = await DataManager.getExerciseTypes(dateStr);
+      if (types.length) {
         const iconRow = document.createElement('div');
         iconRow.className = 'cal-exercise-icons';
-        exData.forEach(({ label, cls }) => {
-          const badge = document.createElement('div');
-          badge.className = 'cal-ex-badge ' + cls;
-          badge.textContent = label;
-          iconRow.appendChild(badge);
-        });
+        iconRow.textContent = types.map(t => EX_ICON[t] || '•').join('');
         cell.appendChild(iconRow);
       }
 
       // Task chips
-      DataManager.getTasksByDate(dateStr).forEach(task => {
+      const dateTasks = await DataManager.getTasksByDate(dateStr);
+      dateTasks.forEach(task => {
         cell.appendChild(makeCalTaskChip(task));
       });
 
       // Click to select date
-      cell.addEventListener('click', e => {
+      cell.addEventListener('click', async e => {
         if (e.target.classList.contains('cal-task-chip')) return; // Skip if clicking task
         document.getElementById('recordDate').value = dateStr;
-        renderRecordsPanel();
+        await renderRecordsPanel();
       });
 
       // Drop events
@@ -1061,13 +980,13 @@
         cell.classList.add('drag-over');
       });
       cell.addEventListener('dragleave', () => cell.classList.remove('drag-over'));
-      cell.addEventListener('drop', e => {
+      cell.addEventListener('drop', async e => {
         e.preventDefault();
         cell.classList.remove('drag-over');
         if (!draggedId) return;
-        DataManager.updateTask(draggedId, { status: 'scheduled', date: dateStr });
+        await DataManager.updateTask(draggedId, { status: 'scheduled', date: dateStr });
         draggedId = null;
-        renderAll();
+        await renderAll();
       });
 
       grid.appendChild(cell);
@@ -1089,13 +1008,13 @@
     });
     chip.addEventListener('dragend', () => chip.classList.remove('dragging'));
 
-    chip.addEventListener('click', (e) => {
+    chip.addEventListener('click', async (e) => {
       e.stopPropagation();
       if (e.shiftKey) {
         // Shift+Click to toggle completed
         const newStatus = task.status === 'completed' ? 'scheduled' : 'completed';
-        DataManager.updateTask(task.id, { ...task, status: newStatus });
-        renderAll();
+        await DataManager.updateTask(task.id, { ...task, status: newStatus });
+        await renderAll();
       } else {
         showTaskEditDialog(task);
       }
@@ -1187,21 +1106,21 @@
     document.removeEventListener('click', closeContextMenu);
   }
 
-  function executeContextMenuAction(action) {
+  async function executeContextMenuAction(action) {
     if (!currentContextTask) return;
     closeContextMenu();
 
     if (action === 'edit') {
       showTaskEditDialog(currentContextTask);
     } else if (action === 'complete') {
-      DataManager.updateTask(currentContextTask.id, { ...currentContextTask, status: 'completed' });
-      renderAll();
+      await DataManager.updateTask(currentContextTask.id, { ...currentContextTask, status: 'completed' });
+      await renderAll();
     } else if (action === 'undo-complete') {
-      DataManager.updateTask(currentContextTask.id, { ...currentContextTask, status: 'scheduled' });
-      renderAll();
+      await DataManager.updateTask(currentContextTask.id, { ...currentContextTask, status: 'scheduled' });
+      await renderAll();
     } else if (action === 'delete') {
-      DataManager.deleteTask(currentContextTask.id);
-      renderAll();
+      await DataManager.deleteTask(currentContextTask.id);
+      await renderAll();
     }
   }
 
@@ -1232,8 +1151,7 @@
       }
     }
 
-    DataManager.updateTask(task.id, { name, status, date: task.date });
-    renderAll();
+    DataManager.updateTask(task.id, { name, status, date: task.date }).then(() => renderAll());
   }
 
   // Delete zone
@@ -1244,13 +1162,13 @@
   document.getElementById('deleteZone').addEventListener('dragleave', () => {
     document.getElementById('deleteZone').classList.remove('drag-over');
   });
-  document.getElementById('deleteZone').addEventListener('drop', e => {
+  document.getElementById('deleteZone').addEventListener('drop', async e => {
     e.preventDefault();
     document.getElementById('deleteZone').classList.remove('drag-over');
     if (!draggedId) return;
-    DataManager.deleteTask(draggedId);
+    await DataManager.deleteTask(draggedId);
     draggedId = null;
-    renderAll();
+    await renderAll();
   });
 
   function prevMonth() {
@@ -1263,7 +1181,7 @@
   }
 
   // ===== TASK PANEL =====
-  function renderTaskPanel() {
+  async function renderTaskPanel() {
     const panel = document.getElementById('leftPanel');
 
     // Create or reuse taskSection
@@ -1274,9 +1192,9 @@
       panel.appendChild(taskSection);
     }
 
-    const ideaTasks      = DataManager.getTasksByStatus('idea');
-    const scheduledTasks = DataManager.getTasksByStatus('scheduled');
-    const completedTasks = DataManager.getTasksByStatus('completed');
+    const ideaTasks      = await DataManager.getTasksByStatus('idea');
+    const scheduledTasks = await DataManager.getTasksByStatus('scheduled');
+    const completedTasks = await DataManager.getTasksByStatus('completed');
 
     taskSection.innerHTML = `
       <div class="task-section-title">IDEA</div>
@@ -1328,12 +1246,12 @@
     card.addEventListener('dragend', () => card.classList.remove('dragging'));
 
     // Click to edit or Shift+Click to toggle completed
-    card.addEventListener('click', (e) => {
+    card.addEventListener('click', async (e) => {
       e.stopPropagation();
       if (e.shiftKey) {
         const newStatus = task.status === 'completed' ? 'scheduled' : 'completed';
-        DataManager.updateTask(task.id, { ...task, status: newStatus });
-        renderAll();
+        await DataManager.updateTask(task.id, { ...task, status: newStatus });
+        await renderAll();
       } else {
         showTaskEditDialog(task);
       }
@@ -1348,18 +1266,18 @@
     return card;
   }
 
-  function handleAddTask() {
+  async function handleAddTask() {
     const input = document.getElementById('taskInput');
     if (!input) return;
     const name = input.value.trim();
     if (!name) return;
-    DataManager.addTask(name);
+    await DataManager.addTask(name);
     input.value = '';
-    renderAll();
+    await renderAll();
   }
 
   // ===== RECORDS PANEL =====
-  function renderRecordsPanel() {
+  async function renderRecordsPanel() {
     const container = document.getElementById('recordsPanelContainer');
     if (!container) return;
 
@@ -1368,8 +1286,14 @@
     const selectedDate = existingInput ? existingInput.value : TODAY;
 
     // Get stored data for selected date
-    const bodyRec = DataManager.getBody(selectedDate) || {};
-    const exRec   = DataManager.getExercise(selectedDate) || {};
+    const bodyRec = await DataManager.getBody(selectedDate) || {};
+    const exTypes = DataManager.EXERCISE_TYPES;
+    const activeTypes = await DataManager.getExerciseTypes(selectedDate);
+
+    const exButtons = exTypes.map(t => `
+      <button class="ex-btn-top${activeTypes.includes(t) ? ' active' : ''}"
+              data-ex="${t}" data-date="${selectedDate}" style="width: 100%;">${t}</button>
+    `).join('');
 
     container.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
@@ -1394,23 +1318,22 @@
         <button class="btn btn-primary btn-sm" onclick="handleSaveBody()" style="width: 100%;">保存</button>
       </div>
       <div style="display: flex; flex-direction: column; gap: 3px; margin-top: 6px;">
-        <button class="ex-btn-top${exRec.muscleTraining ? ' active' : ''}"
-          data-ex="muscleTraining" onclick="handleToggleEx(this)" style="width: 100%;">筋トレ</button>
-        <button class="ex-btn-top${exRec.cardio ? ' active' : ''}"
-          data-ex="cardio" onclick="handleToggleEx(this)" style="width: 100%;">有酸素</button>
-        <button class="ex-btn-top${exRec.hiit ? ' active' : ''}"
-          data-ex="hiit" onclick="handleToggleEx(this)" style="width: 100%;">HIIT</button>
+        ${exButtons}
       </div>
     `;
 
+    // Wire exercise toggle buttons
+    document.querySelectorAll('.ex-btn-top').forEach(b =>
+      b.addEventListener('click', () => onExerciseToggle(b)));
+
     // Bind date change event
-    document.getElementById('recordDate').addEventListener('change', () => {
-      renderRecordsPanel();
-      renderCalendar();
+    document.getElementById('recordDate').addEventListener('change', async () => {
+      await renderRecordsPanel();
+      await renderCalendar();
     });
   }
 
-  function handleSaveBody() {
+  async function handleSaveBody() {
     const dateInput = document.getElementById('recordDate');
     const weightInput = document.getElementById('recordWeight');
     const bodyFatInput = document.getElementById('recordBodyFat');
@@ -1425,8 +1348,8 @@
       return;
     }
 
-    DataManager.setBody(date, weight, bodyFat);
-    renderAll();
+    await DataManager.setBody(date, weight, bodyFat);
+    await renderAll();
   }
 
   function toggleRecordsPanel() {
@@ -1439,52 +1362,41 @@
     }
   }
 
-  function handleToggleEx(btn) {
-    const dateInput = document.getElementById('recordDate');
-    if (!dateInput) return;
-
-    const date = dateInput.value;
-    const exType = btn.dataset.ex;
-    const exRec = DataManager.getExercise(date) || {};
-
-    // Toggle the selected type
-    exRec[exType] = !exRec[exType];
-
-    DataManager.setExercise(
-      date,
-      !!exRec.muscleTraining,
-      !!exRec.cardio,
-      !!exRec.hiit
-    );
-    renderAll();
+  async function onExerciseToggle(btn) {
+    const date = btn.dataset.date;
+    const type = btn.dataset.ex;
+    const isActive = btn.classList.contains('active');
+    await DataManager.toggleExercise(date, type, !isActive);
+    await renderRecordsPanel();
+    await renderCalendar();
   }
 
-  function renderStreaks() {
+  async function renderStreaks() {
     const streakRow = document.getElementById('streakRow');
     if (!streakRow) return;
 
-    // Helper: count consecutive days backward from TODAY where checkFn(dateStr) is truthy
-    function calcStreak(checkFn) {
+    // Helper: count consecutive days backward from TODAY where pred(dateStr) is truthy
+    async function calcStreak(pred) {
       let count = 0;
       const [y, mo, d] = TODAY.split('-').map(Number);
       let cur = new Date(y, mo - 1, d);
       while (true) {
         const dateStr = toDateStr(cur.getFullYear(), cur.getMonth(), cur.getDate());
-        if (!checkFn(dateStr)) break;
+        if (!await pred(dateStr)) break;
         count++;
         cur.setDate(cur.getDate() - 1);
       }
       return count;
     }
 
-    const streaks = [
-      { icon: '💪', label: '筋トレ連続',  count: calcStreak(d => DataManager.getExercise(d)?.muscleTraining) },
-      { icon: '🏃', label: '有酸素連続',  count: calcStreak(d => DataManager.getExercise(d)?.cardio) },
-      { icon: '⚡', label: 'HIIT連続',    count: calcStreak(d => DataManager.getExercise(d)?.hiit) },
-      { icon: '✅', label: 'タスク連続',  count: calcStreak(d => DataManager.getTasksByDate(d).length > 0) },
+    const cards = [
+      { icon: '💪', label: '筋トレ連続', count: await calcStreak(d => DataManager.hasExercise(d, '筋トレ')) },
+      { icon: '🏃', label: 'RUN連続',    count: await calcStreak(d => DataManager.hasExercise(d, 'RUN')) },
+      { icon: '⚡', label: 'HIIT連続',   count: await calcStreak(d => DataManager.hasExercise(d, 'HIIT')) },
+      { icon: '✅', label: 'タスク連続', count: await calcStreak(async d => (await DataManager.getTasksByDate(d)).length > 0) },
     ];
 
-    streakRow.innerHTML = streaks.map(s => `
+    streakRow.innerHTML = cards.map(s => `
       <div class="streak-chip">
         <span class="streak-label">${s.icon} ${s.label}</span>
         <span class="streak-num">${s.count}日</span>
@@ -1493,96 +1405,12 @@
   }
 
   // ===== MAIN RENDER & INIT =====
-  function renderAll() {
-    renderCalendar();
-    renderTaskPanel();
-    renderRecordsPanel();
+  async function renderAll() {
+    await renderCalendar();
+    await renderTaskPanel();
+    await renderRecordsPanel();
+    await renderStreaks();
   }
-
-  // ===== EXPORT =====
-  function exportData() {
-    const data = DataManager.all();
-    const jsonString = JSON.stringify(data, null, 2);
-    const blob = new Blob([jsonString], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    const today = new Date();
-    const dateStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-    link.href = url;
-    link.download = `health-tracker-export-${dateStr}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-    alert('データをエクスポートしました');
-  }
-
-  // ===== IMPORT =====
-  function handleExport() { exportData(); }
-
-  function handleImport() {
-    const importFile = document.getElementById('importFile');
-    importFile.onchange = (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const data = JSON.parse(event.target.result);
-          validateImportData(data);
-          DataManager.replace(data);
-          renderAll();
-          alert('データをインポートしました');
-          importFile.value = '';
-        } catch (err) {
-          alert('インポート失敗: ' + err.message);
-        }
-      };
-      reader.readAsText(file);
-    };
-    importFile.click();
-  }
-
-  function validateImportData(data) {
-    if (!Array.isArray(data.bodyRecords))
-      throw new Error('bodyRecords が配列ではありません');
-    if (!Array.isArray(data.exerciseRecords))
-      throw new Error('exerciseRecords が配列ではありません');
-    if (!Array.isArray(data.tasks))
-      throw new Error('tasks が配列ではありません');
-
-    data.bodyRecords.forEach((r, i) => {
-      if (typeof r.date !== 'string')
-        throw new Error(`bodyRecords[${i}].date が文字列ではありません`);
-      if (typeof r.weight !== 'number')
-        throw new Error(`bodyRecords[${i}].weight が数値ではありません`);
-      if (typeof r.bodyFat !== 'number')
-        throw new Error(`bodyRecords[${i}].bodyFat が数値ではありません`);
-    });
-
-    data.exerciseRecords.forEach((r, i) => {
-      if (typeof r.date !== 'string')
-        throw new Error(`exerciseRecords[${i}].date が文字列ではありません`);
-      if (typeof r.muscleTraining !== 'boolean')
-        throw new Error(`exerciseRecords[${i}].muscleTraining が真偽値ではありません`);
-      if (typeof r.cardio !== 'boolean')
-        throw new Error(`exerciseRecords[${i}].cardio が真偽値ではありません`);
-      if (typeof r.hiit !== 'boolean')
-        throw new Error(`exerciseRecords[${i}].hiit が真偽値ではありません`);
-    });
-
-    data.tasks.forEach((t, i) => {
-      if (typeof t.id !== 'string')
-        throw new Error(`tasks[${i}].id が文字列ではありません`);
-      if (typeof t.name !== 'string')
-        throw new Error(`tasks[${i}].name が文字列ではありません`);
-      if (typeof t.status !== 'string')
-        throw new Error(`tasks[${i}].status が文字列ではありません`);
-      if (t.date !== null && typeof t.date !== 'string')
-        throw new Error(`tasks[${i}].date が null または文字列ではありません`);
-    });
-  }
-
-  function importData(e) { /* legacy: handled by handleImport via onchange */ }
 
   // ===== DASHBOARD =====
   let activePeriod = 30;
@@ -1592,7 +1420,7 @@
     activePeriod = days;
     document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    renderCharts();
+    renderCharts().catch(e => showError('チャート読み込みエラー'));
   }
 
   function destroyChart(id) {
@@ -1602,8 +1430,18 @@
     }
   }
 
-  function renderCharts() {
-    const data = DataManager.all();
+  async function renderCharts() {
+    if (!DataManager) return;
+    // Scan a date range to gather body and exercise records
+    const today = new Date();
+    const startDate = new Date(today);
+    startDate.setFullYear(startDate.getFullYear() - 1); // look back up to 1 year
+
+    // Build date list
+    const dates = [];
+    for (let d = new Date(startDate); d <= today; d.setDate(d.getDate() + 1)) {
+      dates.push(toDateStr(d.getFullYear(), d.getMonth(), d.getDate()));
+    }
 
     // Calculate cutoff date
     let cutoff = null;
@@ -1613,13 +1451,14 @@
       cutoff = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     }
 
-    // Filter records
-    const bodyRecords = cutoff
-      ? data.bodyRecords.filter(r => r.date >= cutoff)
-      : data.bodyRecords;
-    const exerciseRecords = cutoff
-      ? data.exerciseRecords.filter(r => r.date >= cutoff)
-      : data.exerciseRecords;
+    // Fetch body records for date range
+    const bodyRecords = [];
+    for (const date of dates) {
+      if (cutoff && date < cutoff) continue;
+      const rec = await DataManager.getBody(date);
+      if (rec && rec.weight != null && rec.bodyFat != null) bodyRecords.push(rec);
+    }
+    bodyRecords.sort((a, b) => a.date < b.date ? -1 : 1);
 
     // Destroy existing charts
     ['weightChart', 'bfChart', 'muscleChart', 'cardioChart', 'hiitChart'].forEach(destroyChart);
@@ -1680,32 +1519,20 @@
     }
 
     // --- Donut gauges (achievement rate over the selected period) ---
-    // Total = number of calendar days in the selected window.
-    let totalDays;
-    if (activePeriod > 0) {
-      totalDays = activePeriod;
-    } else {
-      // 全期間: from the earliest record date to today (inclusive)
-      const allDates = [...data.bodyRecords, ...data.exerciseRecords].map(r => r.date);
-      if (allDates.length) {
-        const min = allDates.reduce((a, b) => a < b ? a : b);
-        const [y, mo, dd] = min.split('-').map(Number);
-        const start = new Date(y, mo - 1, dd);
-        const now = new Date(); now.setHours(0, 0, 0, 0);
-        totalDays = Math.floor((now - start) / 86400000) + 1;
-      } else {
-        totalDays = 0;
-      }
-    }
+    const filteredDates = cutoff ? dates.filter(d => d >= cutoff) : dates;
+    const totalDays = filteredDates.length;
 
-    const exTypes = [
-      { key: 'muscleTraining', chartId: 'muscleChart', gaugeId: 'muscleGauge', color: '#d61f2b' }, // 赤
-      { key: 'cardio',         chartId: 'cardioChart', gaugeId: 'cardioGauge', color: '#1f5fe0' }, // 青
-      { key: 'hiit',           chartId: 'hiitChart',   gaugeId: 'hiitGauge',   color: '#c4119a' }, // マゼンタ
+    const exGaugeTypes = [
+      { type: '筋トレ', chartId: 'muscleChart', gaugeId: 'muscleGauge', color: '#d61f2b' },
+      { type: 'RUN',    chartId: 'cardioChart', gaugeId: 'cardioGauge', color: '#1f5fe0' },
+      { type: 'HIIT',   chartId: 'hiitChart',   gaugeId: 'hiitGauge',   color: '#c4119a' },
     ];
 
-    exTypes.forEach(({ key, chartId, gaugeId, color }) => {
-      const done = exerciseRecords.filter(r => r[key]).length;
+    for (const { type, chartId, gaugeId, color } of exGaugeTypes) {
+      let done = 0;
+      for (const date of filteredDates) {
+        if (await DataManager.hasExercise(date, type)) done++;
+      }
       const remaining = Math.max(totalDays - done, 0);
       const pct = totalDays > 0 ? Math.min(Math.round((done / totalDays) * 100), 100) : 0;
 
@@ -1736,11 +1563,52 @@
           `<div class="gauge-pct" style="color:${color}">${pct}%</div>` +
           `<div class="gauge-sub">${done}/${totalDays}日</div>`;
       }
-    });
+    }
   }
 
-  // Initialize
-  renderAll();
+  // ===== STARTUP =====
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  function showAuthScreen() {
+    document.getElementById('auth-screen').style.display = 'block';
+  }
+  function showError(msg) {
+    const el = document.getElementById('app-error');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  async function startApp() {
+    DataManager = createDataManager(createSupabaseBackend(sb));
+    try {
+      await renderAll();
+    } catch (e) {
+      showError('接続できません。通信環境を確認してください');
+      console.error(e);
+    }
+  }
+
+  document.getElementById('auth-send').addEventListener('click', async () => {
+    const email = document.getElementById('auth-email').value.trim();
+    if (!email) return;
+    const { error } = await sb.auth.signInWithOtp({
+      email, options: { emailRedirectTo: window.location.href }
+    });
+    document.getElementById('auth-msg').textContent =
+      error ? `エラー: ${error.message}` : 'メールを確認してリンクをタップしてください';
+  });
+
+  (async () => {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) { await startApp(); }
+    else { showAuthScreen(); }
+    sb.auth.onAuthStateChange((_event, s) => {
+      if (s) {
+        document.getElementById('auth-screen').style.display = 'none';
+        startApp();
+      }
+    });
+  })();
 </script>
 
 <!-- CONTEXT MENU -->
