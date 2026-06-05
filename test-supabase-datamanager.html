@@ -52,6 +52,108 @@
         if (rows.length !== 0) throw new Error('row not removed');
       });
 
+      // ----- DataManager: body -----
+      await test('setBody then getBody returns weight/bodyFat', async () => {
+        const dm = createDataManager(createMemoryBackend());
+        await dm.setBody('2026-06-01', 68.5, 18.2);
+        const b = await dm.getBody('2026-06-01');
+        if (b.weight !== 68.5) throw new Error('wrong weight');
+        if (b.bodyFat !== 18.2) throw new Error('wrong bodyFat');
+      });
+      await test('setBody twice on same date overwrites', async () => {
+        const dm = createDataManager(createMemoryBackend());
+        await dm.setBody('2026-06-01', 68, 18);
+        await dm.setBody('2026-06-01', 70, 20);
+        const b = await dm.getBody('2026-06-01');
+        if (b.weight !== 70) throw new Error('not overwritten');
+      });
+      await test('getBody for unknown date returns null', async () => {
+        const dm = createDataManager(createMemoryBackend());
+        const b = await dm.getBody('2099-01-01');
+        if (b !== null) throw new Error('expected null');
+      });
+
+      // ----- DataManager: exercise (presence model) -----
+      await test('toggleExercise(on) adds a type for that date', async () => {
+        const dm = createDataManager(createMemoryBackend());
+        await dm.toggleExercise('2026-06-01', '筋トレ', true);
+        const types = await dm.getExerciseTypes('2026-06-01');
+        if (!types.includes('筋トレ')) throw new Error('type not added');
+      });
+      await test('multiple types can exist on the same date', async () => {
+        const dm = createDataManager(createMemoryBackend());
+        await dm.toggleExercise('2026-06-01', '筋トレ', true);
+        await dm.toggleExercise('2026-06-01', 'RUN', true);
+        const types = await dm.getExerciseTypes('2026-06-01');
+        if (types.length !== 2) throw new Error('expected 2 types');
+      });
+      await test('toggleExercise(off) removes that type only', async () => {
+        const dm = createDataManager(createMemoryBackend());
+        await dm.toggleExercise('2026-06-01', '筋トレ', true);
+        await dm.toggleExercise('2026-06-01', 'RUN', true);
+        await dm.toggleExercise('2026-06-01', '筋トレ', false);
+        const types = await dm.getExerciseTypes('2026-06-01');
+        if (types.includes('筋トレ')) throw new Error('筋トレ not removed');
+        if (!types.includes('RUN')) throw new Error('RUN wrongly removed');
+      });
+      await test('toggleExercise(on) twice does not duplicate', async () => {
+        const dm = createDataManager(createMemoryBackend());
+        await dm.toggleExercise('2026-06-01', '筋トレ', true);
+        await dm.toggleExercise('2026-06-01', '筋トレ', true);
+        const types = await dm.getExerciseTypes('2026-06-01');
+        if (types.length !== 1) throw new Error('duplicated');
+      });
+      await test('hasExercise reflects type presence', async () => {
+        const dm = createDataManager(createMemoryBackend());
+        await dm.toggleExercise('2026-06-01', 'BIKE', true);
+        if (await dm.hasExercise('2026-06-01', 'BIKE') !== true) throw new Error('should be true');
+        if (await dm.hasExercise('2026-06-01', 'HIIT') !== false) throw new Error('should be false');
+      });
+
+      // ----- DataManager: tasks -----
+      await test('addTask creates task with id/name/status/date', async () => {
+        const dm = createDataManager(createMemoryBackend());
+        const t = await dm.addTask('テスト', null);
+        if (!t.id) throw new Error('no id');
+        if (t.name !== 'テスト') throw new Error('wrong name');
+        if (t.status !== 'idea') throw new Error('wrong status');
+      });
+      await test('getTasks returns added task', async () => {
+        const dm = createDataManager(createMemoryBackend());
+        await dm.addTask('A', null);
+        const tasks = await dm.getTasks();
+        if (tasks.length !== 1) throw new Error('expected 1');
+      });
+      await test('updateTask changes status', async () => {
+        const dm = createDataManager(createMemoryBackend());
+        const t = await dm.addTask('A', null);
+        await dm.updateTask(t.id, { status: 'todo' });
+        const tasks = await dm.getTasks();
+        if (tasks[0].status !== 'todo') throw new Error('not updated');
+      });
+      await test('deleteTask removes task', async () => {
+        const dm = createDataManager(createMemoryBackend());
+        const t = await dm.addTask('A', null);
+        await dm.deleteTask(t.id);
+        const tasks = await dm.getTasks();
+        if (tasks.length !== 0) throw new Error('not deleted');
+      });
+      await test('getTasksByStatus filters', async () => {
+        const dm = createDataManager(createMemoryBackend());
+        await dm.addTask('A', null);
+        const t = await dm.addTask('B', null);
+        await dm.updateTask(t.id, { status: 'todo' });
+        const idea = await dm.getTasksByStatus('idea');
+        if (idea.length !== 1) throw new Error('wrong idea count');
+      });
+      await test('getTasksByDate filters', async () => {
+        const dm = createDataManager(createMemoryBackend());
+        await dm.addTask('A', '2026-06-01');
+        await dm.addTask('B', null);
+        const dated = await dm.getTasksByDate('2026-06-01');
+        if (dated.length !== 1) throw new Error('wrong dated count');
+      });
+
       render();
     }
 
