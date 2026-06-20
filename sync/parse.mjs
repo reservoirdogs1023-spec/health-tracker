@@ -25,3 +25,21 @@ export function parseBody(markdown) {
     body_fat: num(cells[2]),
   }));
 }
+
+export function parseExercise(markdown) {
+  const map = new Map(); // key: `${date}|${type}`
+  for (const cells of tableRows(markdown)) {
+    const date = cells[0];
+    const type = cells[1];
+    const detail = cells[2];
+    if (!date || !type) continue;
+    const key = `${date}|${type}`;
+    if (!map.has(key)) map.set(key, { date, type, details: [] });
+    if (detail) map.get(key).details.push(detail);
+  }
+  return [...map.values()].map(({ date, type, details }) => ({
+    date,
+    type,
+    detail: details.length ? details.join(' / ') : null,
+  }));
+}

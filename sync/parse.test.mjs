@@ -32,3 +32,35 @@ test('parseBody は空セルを null にする', () => {
   assert.equal(rows[0].weight, null);
   assert.equal(rows[0].body_fat, 16.0);
 });
+
+import { parseExercise } from './parse.mjs';
+
+const EX_MD = `# トレーニングログ
+
+| 日付 | 種目 | 詳細 | メモ |
+|------|------|------|------|
+| 2026-06-13 | 腕立て | 30回 | |
+| 2026-06-13 | BIKE | 30分 | |
+| 2026-06-15 | スクワット | ブルガリアン 30回 | |
+| 2026-06-15 | スクワット | 追い込み | |
+| 2026-06-16 | RUN |  | |
+`;
+
+test('parseExercise は種目をそのまま type にする（8種目保持）', () => {
+  const rows = parseExercise(EX_MD);
+  const r0 = rows.find(r => r.date === '2026-06-13' && r.type === '腕立て');
+  assert.deepEqual(r0, { date: '2026-06-13', type: '腕立て', detail: '30回' });
+});
+
+test('parseExercise は同日同種目を1件に集約し詳細を連結する', () => {
+  const rows = parseExercise(EX_MD);
+  const sq = rows.filter(r => r.date === '2026-06-15' && r.type === 'スクワット');
+  assert.equal(sq.length, 1);
+  assert.equal(sq[0].detail, 'ブルガリアン 30回 / 追い込み');
+});
+
+test('parseExercise は空詳細を null にする', () => {
+  const rows = parseExercise(EX_MD);
+  const run = rows.find(r => r.date === '2026-06-16' && r.type === 'RUN');
+  assert.equal(run.detail, null);
+});
