@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test sync/",
-    "sync": "node sync-to-supabase.mjs"
+    "sync": "node --env-file=.env sync-to-supabase.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0"
