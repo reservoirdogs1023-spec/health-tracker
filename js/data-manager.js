@@ -15,7 +15,8 @@ function createDataManager(backend) {
   };
 
   // ----- Exercise records (presence model: one row per date+type) -----
-  const EXERCISE_TYPES = ['筋トレ', 'RUN', 'WALKING', 'BIKE', 'HIIT'];
+  const EXERCISE_TYPES = ['腕立て', 'アブローラー', 'スクワット', '斜め懸垂', 'RUN', 'WALKING', 'BIKE', 'HIIT'];
+  const STRENGTH_TYPES = ['腕立て', 'アブローラー', 'スクワット', '斜め懸垂'];
 
   const getExerciseTypes = async (date) => {
     const rows = await backend.list('exercise_records');
@@ -25,6 +26,16 @@ function createDataManager(backend) {
   const hasExercise = async (date, type) => {
     const types = await getExerciseTypes(date);
     return types.includes(type);
+  };
+
+  const getExerciseDetails = async (date) => {
+    const rows = await backend.list('exercise_records');
+    return rows.filter(r => r.date === date).map(r => ({ type: r.type, detail: r.detail ?? null }));
+  };
+
+  const hasStrength = async (date) => {
+    const types = await getExerciseTypes(date);
+    return STRENGTH_TYPES.some(t => types.includes(t));
   };
 
   const toggleExercise = async (date, type, on) => {
@@ -65,7 +76,7 @@ function createDataManager(backend) {
 
   return {
     getBody, setBody,
-    EXERCISE_TYPES, getExerciseTypes, hasExercise, toggleExercise,
+    EXERCISE_TYPES, STRENGTH_TYPES, getExerciseTypes, hasExercise, getExerciseDetails, hasStrength, toggleExercise,
     getTasks, getTasksByStatus, getTasksByDate, addTask, updateTask, deleteTask,
   };
 }
