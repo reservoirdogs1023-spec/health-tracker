@@ -1300,8 +1300,6 @@
     // Get stored data for selected date
     const bodyRec = await DataManager.getBody(selectedDate) || {};
     const exTypes = DataManager.EXERCISE_TYPES;
-    const activeTypes = await DataManager.getExerciseTypes(selectedDate);
-
     const exDetails = await DataManager.getExerciseDetails(selectedDate);
     const exList = exDetails.length
       ? exDetails.map(e => `
@@ -1321,17 +1319,7 @@
           <label>日付</label>
           <input type="date" id="recordDate" value="${selectedDate}" />
         </div>
-        <div class="form-group">
-          <label>体重</label>
-          <input type="number" id="recordWeight" step="0.1" min="0" max="300"
-            value="${bodyRec.weight != null ? bodyRec.weight : ''}" placeholder="0.0" />
-        </div>
-        <div class="form-group">
-          <label>体脂肪</label>
-          <input type="number" id="recordBodyFat" step="0.1" min="0" max="100"
-            value="${bodyRec.bodyFat != null ? bodyRec.bodyFat : ''}" placeholder="0.0" />
-        </div>
-        <button class="btn btn-primary btn-sm" onclick="handleSaveBody()" style="width: 100%;">保存</button>
+
       </div>
       <div class="ex-detail-list" style="display: flex; flex-direction: column; gap: 3px; margin-top: 6px;">
         ${exList}
@@ -1345,25 +1333,6 @@
     });
   }
 
-  async function handleSaveBody() {
-    const dateInput = document.getElementById('recordDate');
-    const weightInput = document.getElementById('recordWeight');
-    const bodyFatInput = document.getElementById('recordBodyFat');
-    if (!dateInput || !weightInput || !bodyFatInput) return;
-
-    const date = dateInput.value;
-    const weight = weightInput.value.trim();
-    const bodyFat = bodyFatInput.value.trim();
-
-    if (!weight || !bodyFat) {
-      alert('体重と体脂肪率を両方入力してください。');
-      return;
-    }
-
-    await DataManager.setBody(date, weight, bodyFat);
-    await renderAll();
-  }
-
   function toggleRecordsPanel() {
     const container = document.getElementById('recordsPanelContainer');
     if (!container) return;
@@ -1372,15 +1341,6 @@
     if (btn) {
       btn.textContent = container.classList.contains('collapsed') ? '＋' : '−';
     }
-  }
-
-  async function onExerciseToggle(btn) {
-    const date = btn.dataset.date;
-    const type = btn.dataset.ex;
-    const isActive = btn.classList.contains('active');
-    await DataManager.toggleExercise(date, type, !isActive);
-    await renderRecordsPanel();
-    await renderCalendar();
   }
 
   async function renderStreaks() {
