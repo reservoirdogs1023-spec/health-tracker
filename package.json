@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test sync/",
+    "test": "node --test \"sync/*.test.mjs\"",
     "sync": "node --env-file=.env sync-to-supabase.mjs"
   },
   "dependencies": {
