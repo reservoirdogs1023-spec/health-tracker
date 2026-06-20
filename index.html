@@ -326,6 +326,10 @@
       font-weight: 700;
     }
 
+    .ex-detail-row { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; padding: 2px 0; }
+    .ex-detail-text { color: var(--text-muted); }
+    .ex-detail-empty { font-size: 12px; color: var(--text-muted); }
+
     .cal-exercise-icons {
       display: flex;
       flex-direction: column;
@@ -872,7 +876,10 @@
   let DataManager; // assigned at startup via createDataManager(createSupabaseBackend(sb))
 
   // Exercise icon map
-  const EX_ICON = { '筋トレ': '💪', 'RUN': '🏃', 'WALKING': '🚶', 'BIKE': '🚴', 'HIIT': '⚡' };
+  const EX_ICON = {
+    '腕立て': '💪', 'アブローラー': '🛞', 'スクワット': '🦵', '斜め懸垂': '🧗',
+    'RUN': '🏃', 'WALKING': '🚶', 'BIKE': '🚲', 'HIIT': '🔥',
+  };
 
   // Tab switching
   document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -1295,10 +1302,14 @@
     const exTypes = DataManager.EXERCISE_TYPES;
     const activeTypes = await DataManager.getExerciseTypes(selectedDate);
 
-    const exButtons = exTypes.map(t => `
-      <button class="ex-btn-top${activeTypes.includes(t) ? ' active' : ''}"
-              data-ex="${t}" data-date="${selectedDate}" style="width: 100%;">${t}</button>
-    `).join('');
+    const exDetails = await DataManager.getExerciseDetails(selectedDate);
+    const exList = exDetails.length
+      ? exDetails.map(e => `
+        <div class="ex-detail-row">
+          <span>${EX_ICON[e.type] || '•'} ${e.type}</span>
+          <span class="ex-detail-text">${e.detail ? e.detail : ''}</span>
+        </div>`).join('')
+      : '<div class="ex-detail-empty">記録なし</div>';
 
     container.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
@@ -1322,14 +1333,10 @@
         </div>
         <button class="btn btn-primary btn-sm" onclick="handleSaveBody()" style="width: 100%;">保存</button>
       </div>
-      <div style="display: flex; flex-direction: column; gap: 3px; margin-top: 6px;">
-        ${exButtons}
+      <div class="ex-detail-list" style="display: flex; flex-direction: column; gap: 3px; margin-top: 6px;">
+        ${exList}
       </div>
     `;
-
-    // Wire exercise toggle buttons
-    document.querySelectorAll('.ex-btn-top').forEach(b =>
-      b.addEventListener('click', () => onExerciseToggle(b)));
 
     // Bind date change event
     document.getElementById('recordDate').addEventListener('change', async () => {
@@ -1395,7 +1402,7 @@
     }
 
     const cards = [
-      { icon: '💪', label: '筋トレ連続', count: await calcStreak(d => DataManager.hasExercise(d, '筋トレ')) },
+      { icon: '💪', label: '筋トレ連続', count: await calcStreak(d => DataManager.hasStrength(d)) },
       { icon: '🏃', label: 'RUN連続',    count: await calcStreak(d => DataManager.hasExercise(d, 'RUN')) },
       { icon: '⚡', label: 'HIIT連続',   count: await calcStreak(d => DataManager.hasExercise(d, 'HIIT')) },
       { icon: '✅', label: 'タスク連続', count: await calcStreak(async d => (await DataManager.getTasksByDate(d)).length > 0) },
@@ -1536,7 +1543,11 @@
     for (const { type, chartId, gaugeId, color } of exGaugeTypes) {
       let done = 0;
       for (const date of filteredDates) {
-        if (await DataManager.hasExercise(date, type)) done++;
+        if (type === '筋トレ') {
+          if (await DataManager.hasStrength(date)) done++;
+        } else {
+          if (await DataManager.hasExercise(date, type)) done++;
+        }
       }
       const remaining = Math.max(totalDays - done, 0);
       const pct = totalDays > 0 ? Math.min(Math.round((done / totalDays) * 100), 100) : 0;
