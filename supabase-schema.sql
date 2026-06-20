@@ -14,6 +14,7 @@ create table if not exists exercise_records (
   user_id uuid not null references auth.users(id) default auth.uid(),
   date date not null,
   type text not null,
+  detail text,
   unique (user_id, date, type)
 );
 
@@ -24,6 +25,9 @@ create table if not exists tasks (
   status text not null,
   date date
 );
+
+-- 既存環境向け: detail 列を後付け（新規 create では既に存在するため no-op）
+alter table exercise_records add column if not exists detail text;
 
 alter table body_records enable row level security;
 alter table exercise_records enable row level security;
