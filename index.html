@@ -739,6 +739,19 @@
     .chart-row.two   { grid-template-columns: repeat(2, 1fr); }
     .chart-row.three { grid-template-columns: repeat(3, 1fr); }
     .chart-box { position: relative; flex: 1; min-height: 0; }
+    /* 8-type exercise gauge grid (4 columns x 2 rows) */
+    .ex-gauge-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-auto-rows: 1fr;
+      gap: 12px;
+      flex: 1;
+      min-height: 0;
+    }
+    .ex-gauge-card { padding: 10px 12px; }
+    .ex-gauge-card h3 { font-size: 12px; margin-bottom: 4px; }
+    .ex-gauge-card .gauge-center .gauge-pct { font-size: 20px; }
+    .ex-gauge-card .gauge-center .gauge-sub { font-size: 9px; margin-top: 3px; }
     /* Donut gauge center label */
     .gauge-center {
       position: absolute;
@@ -766,6 +779,7 @@
     }
     @media (max-width: 760px) {
       .chart-row.two, .chart-row.three { grid-template-columns: 1fr; }
+      .ex-gauge-grid { grid-template-columns: repeat(2, 1fr); }
     }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -844,30 +858,8 @@
         </div>
       </div>
 
-      <!-- Exercise charts: 筋トレ + RUN + HIIT side-by-side -->
-      <div class="chart-row three">
-        <div class="chart-card">
-          <h3>💪 筋トレ達成率</h3>
-          <div class="chart-box gauge-box">
-            <canvas id="muscleChart"></canvas>
-            <div class="gauge-center" id="muscleGauge"></div>
-          </div>
-        </div>
-        <div class="chart-card">
-          <h3>🏃 RUN達成率</h3>
-          <div class="chart-box gauge-box">
-            <canvas id="cardioChart"></canvas>
-            <div class="gauge-center" id="cardioGauge"></div>
-          </div>
-        </div>
-        <div class="chart-card">
-          <h3>⚡ HIIT達成率</h3>
-          <div class="chart-box gauge-box">
-            <canvas id="hiitChart"></canvas>
-            <div class="gauge-center" id="hiitGauge"></div>
-          </div>
-        </div>
-      </div>
+      <!-- Exercise gauges: all 8 types (built dynamically) -->
+      <div class="ex-gauge-grid" id="exGaugeGrid"></div>
     </div>
   </div>
 </div>
@@ -1432,8 +1424,8 @@
     }
     bodyRecords.sort((a, b) => a.date < b.date ? -1 : 1);
 
-    // Destroy existing charts
-    ['weightChart', 'bfChart', 'muscleChart', 'cardioChart', 'hiitChart'].forEach(destroyChart);
+    // Destroy existing charts (weight/bf + dynamic exgauge-*)
+    Object.keys(charts).forEach(destroyChart);
 
     // --- Line charts (weight & body fat) ---
     if (bodyRecords.length > 0) {
@@ -1495,19 +1487,36 @@
     const totalDays = filteredDates.length;
 
     const exGaugeTypes = [
-      { type: '筋トレ', chartId: 'muscleChart', gaugeId: 'muscleGauge', color: '#d61f2b' },
-      { type: 'RUN',    chartId: 'cardioChart', gaugeId: 'cardioGauge', color: '#1f5fe0' },
-      { type: 'HIIT',   chartId: 'hiitChart',   gaugeId: 'hiitGauge',   color: '#c4119a' },
+      { type: '腕立て',       emoji: '💪', color: '#d61f2b' },
+      { type: 'アブローラー', emoji: '🛞', color: '#e8590c' },
+      { type: 'スクワット',   emoji: '🦵', color: '#2b8a3e' },
+      { type: '斜め懸垂',     emoji: '🧗', color: '#5f3dc4' },
+      { type: 'RUN',          emoji: '🏃', color: '#1f5fe0' },
+      { type: 'WALKING',      emoji: '🚶', color: '#0c8599' },
+      { type: 'BIKE',         emoji: '🚲', color: '#f08c00' },
+      { type: 'HIIT',         emoji: '🔥', color: '#c4119a' },
     ];
 
-    for (const { type, chartId, gaugeId, color } of exGaugeTypes) {
+    // Build the 8 gauge cards
+    const exGrid = document.getElementById('exGaugeGrid');
+    if (exGrid) {
+      exGrid.innerHTML = exGaugeTypes.map((g, i) => `
+        <div class="chart-card ex-gauge-card">
+          <h3>${g.emoji} ${g.type}</h3>
+          <div class="chart-box gauge-box">
+            <canvas id="exgauge-${i}"></canvas>
+            <div class="gauge-center" id="exgauge-${i}-c"></div>
+          </div>
+        </div>`).join('');
+    }
+
+    for (let i = 0; i < exGaugeTypes.length; i++) {
+      const { type, color } = exGaugeTypes[i];
+      const chartId = `exgauge-${i}`;
+      const gaugeId = `exgauge-${i}-c`;
       let done = 0;
       for (const date of filteredDates) {
-        if (type === '筋トレ') {
-          if (await DataManager.hasStrength(date)) done++;
-        } else {
-          if (await DataManager.hasExercise(date, type)) done++;
-        }
+        if (await DataManager.hasExercise(date, type)) done++;
       }
       const remaining = Math.max(totalDays - done, 0);
       const pct = totalDays > 0 ? Math.min(Math.round((done / totalDays) * 100), 100) : 0;
