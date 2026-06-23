@@ -742,7 +742,7 @@
     /* 8-type exercise gauge grid (4 columns x 2 rows) */
     .ex-gauge-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       grid-auto-rows: 1fr;
       gap: 12px;
       flex: 1;
@@ -779,7 +779,7 @@
     }
     @media (max-width: 760px) {
       .chart-row.two, .chart-row.three { grid-template-columns: 1fr; }
-      .ex-gauge-grid { grid-template-columns: repeat(2, 1fr); }
+      .ex-gauge-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
