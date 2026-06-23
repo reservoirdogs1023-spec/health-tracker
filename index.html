@@ -780,6 +780,14 @@
     @media (max-width: 760px) {
       .chart-row.two, .chart-row.three { grid-template-columns: 1fr; }
       .ex-gauge-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      /* Mobile: dashboard scrolls vertically; charts get real fixed heights
+         instead of being squeezed into one viewport-height (flex:1). */
+      #dashboard.tab-panel.active { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+      #dashboard .dash-inner { flex: none; }
+      #dashboard .chart-row, #dashboard .ex-gauge-grid { flex: none; }
+      #dashboard .ex-gauge-grid { grid-auto-rows: auto; }
+      #dashboard .chart-box { height: 220px; flex: none; }
+      #dashboard .ex-gauge-grid .chart-box { height: 130px; }
     }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
