@@ -802,14 +802,6 @@
   <script src="js/data-manager.js"></script>
 </head>
 <body>
-  <div id="auth-screen" style="display:none; max-width:360px; margin:15vh auto; font-family:sans-serif; text-align:center;">
-    <h2>Health Tracker</h2>
-    <p>メールアドレスを入力し、届いたリンクからログインしてください。</p>
-    <input id="auth-email" type="email" placeholder="you@example.com"
-           style="width:100%; padding:.6rem; margin:.5rem 0; box-sizing:border-box;" />
-    <button id="auth-send" style="width:100%; padding:.6rem;">ログインリンクを送る</button>
-    <p id="auth-msg" style="color:#1d5be0; min-height:1.2em;"></p>
-  </div>
   <div id="app-error" style="display:none; position:fixed; top:0; left:0; right:0;
        background:#cf3a3a; color:#fff; padding:.6rem; text-align:center; z-index:9999;"></div>
 <div class="app">
@@ -1319,7 +1311,18 @@
           <label>日付</label>
           <input type="date" id="recordDate" value="${selectedDate}" />
         </div>
-
+        <div class="form-group">
+          <label>体重 (kg)</label>
+          <input type="number" step="0.05" inputmode="decimal" id="recordWeight"
+                 value="${bodyRec.weight ?? ''}" placeholder="--" />
+        </div>
+        <div class="form-group">
+          <label>体脂肪 (%)</label>
+          <input type="number" step="0.1" inputmode="decimal" id="recordBodyFat"
+                 value="${bodyRec.bodyFat ?? ''}" placeholder="--" />
+        </div>
+        <button class="btn btn-primary" id="saveBodyBtn">保存</button>
+        <div id="bodySaveMsg" style="font-size:10px; font-weight:600; min-height:12px;"></div>
       </div>
       <div class="ex-detail-list" style="display: flex; flex-direction: column; gap: 3px; margin-top: 6px;">
         ${exList}
@@ -1331,6 +1334,32 @@
       await renderRecordsPanel();
       await renderCalendar();
     });
+
+    // Bind body-record save
+    document.getElementById('saveBodyBtn').addEventListener('click', handleSaveBody);
+  }
+
+  async function handleSaveBody() {
+    const date = document.getElementById('recordDate').value;
+    const weight = document.getElementById('recordWeight').value.trim();
+    const bodyFat = document.getElementById('recordBodyFat').value.trim();
+    const msg = document.getElementById('bodySaveMsg');
+    if (weight === '' || bodyFat === '') {
+      msg.style.color = 'var(--amber)';
+      msg.textContent = '体重と体脂肪を入力';
+      return;
+    }
+    try {
+      await DataManager.setBody(date, weight, bodyFat);
+      msg.style.color = 'var(--green)';
+      msg.textContent = '保存しました';
+      await renderCalendar();
+    } catch (e) {
+      msg.style.color = 'var(--amber)';
+      msg.textContent = '保存に失敗';
+      showError('保存に失敗しました: ' + e.message);
+      console.error(e);
+    }
   }
 
   function toggleRecordsPanel() {
@@ -1559,12 +1588,11 @@
     }
   }
 
-  // ===== STARTUP =====
-  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  // ===== STARTUP (認証なし: anon キーで直接接続) =====
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 
-  function showAuthScreen() {
-    document.getElementById('auth-screen').style.display = 'block';
-  }
   function showError(msg) {
     const el = document.getElementById('app-error');
     el.textContent = msg;
@@ -1583,32 +1611,7 @@
     }
   }
 
-  document.getElementById('auth-send').addEventListener('click', async () => {
-    const email = document.getElementById('auth-email').value.trim();
-    if (!email) return;
-    const { error } = await sb.auth.signInWithOtp({
-      email, options: { emailRedirectTo: window.location.href }
-    });
-    document.getElementById('auth-msg').textContent =
-      error ? `エラー: ${error.message}` : 'メールを確認してリンクをタップしてください';
-  });
-
-  let appStarted = false;
-  async function ensureStarted() {
-    if (appStarted) return;
-    appStarted = true;
-    document.getElementById('auth-screen').style.display = 'none';
-    await startApp();
-  }
-
-  (async () => {
-    const { data: { session } } = await sb.auth.getSession();
-    if (session) { await ensureStarted(); }
-    else { showAuthScreen(); }
-    sb.auth.onAuthStateChange((_event, s) => {
-      if (s) ensureStarted();
-    });
-  })();
+  startApp();
 </script>
 
 <!-- CONTEXT MENU -->
