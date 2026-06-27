@@ -43,6 +43,15 @@ function createDataManager(backend) {
     else await backend.remove('exercise_records', { date, type });
   };
 
+  // Record an exercise with optional detail (回数・距離など). Upsert by date+type.
+  const setExercise = async (date, type, detail = null) => {
+    await backend.upsert('exercise_records', { date, type, detail: detail || null }, 'user_id,date,type');
+  };
+
+  const removeExercise = async (date, type) => {
+    await backend.remove('exercise_records', { date, type });
+  };
+
   // ----- Tasks -----
   const uuid = () => (crypto.randomUUID
     ? crypto.randomUUID()
@@ -76,7 +85,7 @@ function createDataManager(backend) {
 
   return {
     getBody, setBody,
-    EXERCISE_TYPES, STRENGTH_TYPES, getExerciseTypes, hasExercise, getExerciseDetails, hasStrength, toggleExercise,
+    EXERCISE_TYPES, STRENGTH_TYPES, getExerciseTypes, hasExercise, getExerciseDetails, hasStrength, toggleExercise, setExercise, removeExercise,
     getTasks, getTasksByStatus, getTasksByDate, addTask, updateTask, deleteTask,
   };
 }

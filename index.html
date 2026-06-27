@@ -805,6 +805,14 @@
       #dashboard .ex-gauge-grid { grid-auto-rows: auto; }
       #dashboard .chart-box { height: 220px; flex: none; }
       #dashboard .ex-gauge-grid .chart-box { height: 130px; }
+
+      /* Mobile: トラッカーも高さ固定をやめて全体をスクロール表示 */
+      #tracker.tab-panel.active { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+      .tracker-body { flex-direction: column; overflow: visible; }
+      .center-panel { overflow: visible; padding: 10px; }
+      .content-wrapper { display: block; }
+      .records-panel-top { margin-bottom: 12px; }
+      .calendar-grid { overflow: visible; }
     }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -842,13 +850,11 @@
     </div>
 
     <div class="tracker-body">
-      <aside class="left-panel" id="leftPanel"></aside>
       <main class="center-panel" id="centerPanel">
         <div class="content-wrapper">
           <div id="recordsPanelContainer" class="records-panel-top"></div>
           <div class="calendar-grid" id="calendarGrid"></div>
         </div>
-        <div class="delete-zone" id="deleteZone">🗑️ ここにドロップして削除</div>
       </main>
     </div>
   </div>
@@ -978,16 +984,10 @@
         cell.appendChild(iconRow);
       }
 
-      // Task chips
-      const dateTasks = await DataManager.getTasksByDate(dateStr);
-      dateTasks.forEach(task => {
-        cell.appendChild(makeCalTaskChip(task));
-      });
-
       // Click to select date
       cell.addEventListener('click', async e => {
-        if (e.target.classList.contains('cal-task-chip')) return; // Skip if clicking task
-        document.getElementById('recordDate').value = dateStr;
+        const di = document.getElementById('recordDate');
+        if (di) di.value = dateStr;
         await renderRecordsPanel();
       });
 
@@ -1173,22 +1173,7 @@
       .catch(e => { showError('保存に失敗しました: ' + e.message); console.error(e); });
   }
 
-  // Delete zone
-  document.getElementById('deleteZone').addEventListener('dragover', e => {
-    e.preventDefault();
-    document.getElementById('deleteZone').classList.add('drag-over');
-  });
-  document.getElementById('deleteZone').addEventListener('dragleave', () => {
-    document.getElementById('deleteZone').classList.remove('drag-over');
-  });
-  document.getElementById('deleteZone').addEventListener('drop', async e => {
-    e.preventDefault();
-    document.getElementById('deleteZone').classList.remove('drag-over');
-    if (!draggedId) return;
-    await DataManager.deleteTask(draggedId);
-    draggedId = null;
-    await renderAll();
-  });
+  // (タスク機能は廃止: deleteZone ドロップ削除は無効化)
 
   async function prevMonth() {
     currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
@@ -1309,12 +1294,17 @@
     // Get stored data for selected date
     const bodyRec = await DataManager.getBody(selectedDate) || {};
     const exTypes = DataManager.EXERCISE_TYPES;
+    const exOptions = exTypes.map(t => `<option value="${t}">${EX_ICON[t] || ''} ${t}</option>`).join('');
     const exDetails = await DataManager.getExerciseDetails(selectedDate);
     const exList = exDetails.length
       ? exDetails.map(e => `
         <div class="ex-detail-row">
           <span>${EX_ICON[e.type] || '•'} ${e.type}</span>
-          <span class="ex-detail-text">${e.detail ? e.detail : ''}</span>
+          <span style="display:flex; align-items:center; gap:8px;">
+            <span class="ex-detail-text">${e.detail ? e.detail : ''}</span>
+            <button class="ex-del-btn" data-type="${e.type}" title="削除"
+                    style="border:none; background:none; color:var(--text-soft); cursor:pointer; font-size:13px; line-height:1; padding:2px;">✕</button>
+          </span>
         </div>`).join('')
       : '<div class="ex-detail-empty">記録なし</div>';
 
@@ -1340,6 +1330,18 @@
         </div>
         <button class="btn btn-primary" id="saveBodyBtn">保存</button>
         <div id="bodySaveMsg" style="font-size:10px; font-weight:600; min-height:12px;"></div>
+
+        <div class="form-group" style="margin-top:8px;">
+          <label>トレーニング</label>
+          <div style="display:flex; gap:6px;">
+            <select id="exType" style="flex:1.1; min-width:0; padding:9px 8px; border:1px solid var(--border-strong); border-radius:var(--radius-sm); font-family:var(--font); font-size:13px; color:var(--text); background:var(--surface);">
+              ${exOptions}
+            </select>
+            <input type="text" id="exDetail" inputmode="text" placeholder="回数・距離 (任意)" style="flex:1; min-width:0;" />
+          </div>
+        </div>
+        <button class="btn btn-primary" id="saveExBtn">運動を記録</button>
+        <div id="exSaveMsg" style="font-size:10px; font-weight:600; min-height:12px;"></div>
       </div>
       <div class="ex-detail-list" style="display: flex; flex-direction: column; gap: 3px; margin-top: 6px;">
         ${exList}
@@ -1354,6 +1356,43 @@
 
     // Bind body-record save
     document.getElementById('saveBodyBtn').addEventListener('click', handleSaveBody);
+    // Bind exercise save + per-row delete
+    document.getElementById('saveExBtn').addEventListener('click', handleSaveExercise);
+    container.querySelectorAll('.ex-del-btn').forEach(b => {
+      b.addEventListener('click', () => handleRemoveExercise(b.dataset.type));
+    });
+  }
+
+  async function handleSaveExercise() {
+    const date = document.getElementById('recordDate').value;
+    const type = document.getElementById('exType').value;
+    const detail = document.getElementById('exDetail').value.trim();
+    const msg = document.getElementById('exSaveMsg');
+    if (!date || !type) { msg.style.color = 'var(--amber)'; msg.textContent = '種目を選択'; return; }
+    try {
+      await DataManager.setExercise(date, type, detail || null);
+      msg.style.color = 'var(--green)';
+      msg.textContent = `${type} を記録しました`;
+      await renderRecordsPanel();
+      await renderCalendar();
+    } catch (e) {
+      msg.style.color = 'var(--amber)';
+      msg.textContent = '記録に失敗';
+      showError('運動の記録に失敗しました: ' + e.message);
+      console.error(e);
+    }
+  }
+
+  async function handleRemoveExercise(type) {
+    const date = document.getElementById('recordDate').value;
+    try {
+      await DataManager.removeExercise(date, type);
+      await renderRecordsPanel();
+      await renderCalendar();
+    } catch (e) {
+      showError('運動の削除に失敗しました: ' + e.message);
+      console.error(e);
+    }
   }
 
   async function handleSaveBody() {
@@ -1425,7 +1464,6 @@
   // ===== MAIN RENDER & INIT =====
   async function renderAll() {
     await renderCalendar();
-    await renderTaskPanel();
     await renderRecordsPanel();
     await renderStreaks();
   }
