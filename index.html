@@ -109,7 +109,7 @@
     /* === TAB CONTENT === */
     .tab-panel { display: none; }
     .tab-panel.active { display: flex; flex-direction: column; flex: 1; min-height: 0; }
-    #dashboard.tab-panel.active { overflow: hidden; }
+    #dashboard.tab-panel.active { overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
     /* === TRACKER LAYOUT: sticky sidebar + scrollable calendar === */
     .tracker-body {
@@ -698,14 +698,13 @@
       padding: 18px 20px;
       margin-bottom: 18px;
     }
-    /* Dashboard: fill viewport height, no scroll */
+    /* Dashboard: 実寸グラフを縦に並べてスクロール（潰さない） */
     .dash-inner {
       max-width: 1200px;
       width: 100%;
       margin: 0 auto;
       padding: 22px 24px;
-      flex: 1;
-      min-height: 0;
+      flex: 0 0 auto;
       display: flex;
       flex-direction: column;
       gap: 16px;
@@ -729,25 +728,24 @@
       gap: 8px;
       flex: 0 0 auto;
     }
-    /* Dashboard rows: charts side-by-side, split remaining height */
+    /* Dashboard rows: charts side-by-side（高さは実寸固定） */
     .chart-row {
       display: grid;
       gap: 16px;
-      flex: 1;
-      min-height: 0;
+      flex: 0 0 auto;
     }
     .chart-row.two   { grid-template-columns: repeat(2, 1fr); }
     .chart-row.three { grid-template-columns: repeat(3, 1fr); }
-    .chart-box { position: relative; flex: 1; min-height: 0; }
+    .chart-box { position: relative; flex: none; height: 300px; }
     /* Category gauge grid (3 columns: 筋トレ / 有酸素 / HIIT) */
     .ex-gauge-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      grid-auto-rows: 1fr;
+      grid-auto-rows: auto;
       gap: 12px;
-      flex: 1;
-      min-height: 0;
+      flex: 0 0 auto;
     }
+    .ex-gauge-grid .chart-box { height: 160px; }
     .ex-gauge-card { padding: 12px 14px; }
     .ex-gauge-card h3 { font-size: 13px; margin-bottom: 6px; }
     /* Per-exercise day-count breakdown under each donut */
