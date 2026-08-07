@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseBody } from './parse.mjs';
+import { parseBody, parseSleep } from './parse.mjs';
 
 const BODY_MD = `# 体組成ログ
 
@@ -31,6 +31,37 @@ test('parseBody は空セルを null にする', () => {
   const rows = parseBody(md);
   assert.equal(rows[0].weight, null);
   assert.equal(rows[0].body_fat, 16.0);
+});
+
+const SLEEP_MD = `# 睡眠ログ
+
+| 日付 | 合計(h) | 夜(h) | 昼(h) | メモ |
+|------|--------|-------|-------|------|
+| 2026-07-04 | 6.5 |  |  | |
+| 2026-07-05 | 7.5 | 2 | 5.5 | 夜勤明け |
+`;
+
+test('parseSleep は合計・夜・昼を数値で返す', () => {
+  const rows = parseSleep(SLEEP_MD);
+  assert.deepEqual(rows[1], {
+    date: '2026-07-05', hours: 7.5, night_hours: 2, nap_hours: 5.5,
+  });
+});
+
+test('parseSleep は内訳のない日を null にする（0 で埋めない）', () => {
+  const rows = parseSleep(SLEEP_MD);
+  assert.deepEqual(rows[0], {
+    date: '2026-07-04', hours: 6.5, night_hours: null, nap_hours: null,
+  });
+});
+
+test('parseSleep は空セルを null にする', () => {
+  const md = `| 日付 | 合計(h) | 夜(h) | 昼(h) | メモ |
+|------|--------|-------|-------|------|
+| 2026-07-06 |  |  |  | |
+`;
+  const rows = parseSleep(md);
+  assert.equal(rows[0].hours, null);
 });
 
 import { parseExercise } from './parse.mjs';

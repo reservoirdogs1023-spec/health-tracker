@@ -139,50 +139,6 @@
         if (await dm.hasExercise('2026-06-01', 'HIIT') !== false) throw new Error('should be false');
       });
 
-      // ----- DataManager: tasks -----
-      await test('addTask creates task with id/name/status/date', async () => {
-        const dm = createDataManager(createMemoryBackend());
-        const t = await dm.addTask('テスト', null);
-        if (!t.id) throw new Error('no id');
-        if (t.name !== 'テスト') throw new Error('wrong name');
-        if (t.status !== 'idea') throw new Error('wrong status');
-      });
-      await test('getTasks returns added task', async () => {
-        const dm = createDataManager(createMemoryBackend());
-        await dm.addTask('A', null);
-        const tasks = await dm.getTasks();
-        if (tasks.length !== 1) throw new Error('expected 1');
-      });
-      await test('updateTask changes status', async () => {
-        const dm = createDataManager(createMemoryBackend());
-        const t = await dm.addTask('A', null);
-        await dm.updateTask(t.id, { status: 'todo' });
-        const tasks = await dm.getTasks();
-        if (tasks[0].status !== 'todo') throw new Error('not updated');
-      });
-      await test('deleteTask removes task', async () => {
-        const dm = createDataManager(createMemoryBackend());
-        const t = await dm.addTask('A', null);
-        await dm.deleteTask(t.id);
-        const tasks = await dm.getTasks();
-        if (tasks.length !== 0) throw new Error('not deleted');
-      });
-      await test('getTasksByStatus filters', async () => {
-        const dm = createDataManager(createMemoryBackend());
-        await dm.addTask('A', null);
-        const t = await dm.addTask('B', null);
-        await dm.updateTask(t.id, { status: 'todo' });
-        const idea = await dm.getTasksByStatus('idea');
-        if (idea.length !== 1) throw new Error('wrong idea count');
-      });
-      await test('getTasksByDate filters', async () => {
-        const dm = createDataManager(createMemoryBackend());
-        await dm.addTask('A', '2026-06-01');
-        await dm.addTask('B', null);
-        const dated = await dm.getTasksByDate('2026-06-01');
-        if (dated.length !== 1) throw new Error('wrong dated count');
-      });
-
       render();
     }
 

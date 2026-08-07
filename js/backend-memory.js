@@ -2,8 +2,8 @@
 function createMemoryBackend(seed = {}) {
   const store = {
     body_records: seed.body_records ? [...seed.body_records] : [],
+    sleep_records: seed.sleep_records ? [...seed.sleep_records] : [],
     exercise_records: seed.exercise_records ? [...seed.exercise_records] : [],
-    tasks: seed.tasks ? [...seed.tasks] : [],
   };
 
   const list = async (table) => store[table].map(r => ({ ...r }));

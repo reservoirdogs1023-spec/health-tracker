@@ -26,6 +26,16 @@ export function parseBody(markdown) {
   }));
 }
 
+// 睡眠は 合計 / 夜 / 昼 の3値。夜・昼は内訳を記録していない日は null。
+export function parseSleep(markdown) {
+  return tableRows(markdown).map(cells => ({
+    date: cells[0],
+    hours: num(cells[1]),
+    night_hours: num(cells[2]),
+    nap_hours: num(cells[3]),
+  }));
+}
+
 export function parseExercise(markdown) {
   const map = new Map(); // key: `${date}|${type}`
   for (const cells of tableRows(markdown)) {
