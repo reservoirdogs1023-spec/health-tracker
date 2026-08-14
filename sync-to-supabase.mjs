@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createClient } from '@supabase/supabase-js';
-import { parseBody, parseSleep, parseExercise } from './sync/parse.mjs';
+import { addWorkoutRecordKeys, parseBody, parseSleep, parseExercise, parseWorkout } from './sync/parse.mjs';
 
 const {
   SUPABASE_URL,
@@ -9,6 +9,7 @@ const {
   USER_ID,
   OBSIDIAN_HEALTH_DIR = '/Users/moromizatomasaru/Library/Mobile Documents/iCloud~md~obsidian/Documents/Obsidian倉庫/Health',
 } = process.env;
+const dryRun = process.argv.includes('--dry-run');
 
 function requireEnv(name, value) {
   if (!value) {
@@ -16,22 +17,35 @@ function requireEnv(name, value) {
     process.exit(1);
   }
 }
-requireEnv('SUPABASE_URL', SUPABASE_URL);
-requireEnv('SUPABASE_SERVICE_ROLE_KEY', SUPABASE_SERVICE_ROLE_KEY);
-requireEnv('USER_ID', USER_ID);
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { persistSession: false, autoRefreshToken: false },
-});
+if (!dryRun) {
+  requireEnv('SUPABASE_URL', SUPABASE_URL);
+  requireEnv('SUPABASE_SERVICE_ROLE_KEY', SUPABASE_SERVICE_ROLE_KEY);
+  requireEnv('USER_ID', USER_ID);
+}
 
 async function main() {
   const bodyMd = await readFile(join(OBSIDIAN_HEALTH_DIR, '体組成.md'), 'utf8');
   const sleepMd = await readFile(join(OBSIDIAN_HEALTH_DIR, '睡眠.md'), 'utf8');
   const exMd = await readFile(join(OBSIDIAN_HEALTH_DIR, 'トレーニング.md'), 'utf8');
+  const workoutMd = await readFile(join(OBSIDIAN_HEALTH_DIR, 'ワークアウト.md'), 'utf8');
 
-  const bodyRows = parseBody(bodyMd).map(r => ({ ...r, user_id: USER_ID }));
-  const sleepRows = parseSleep(sleepMd).map(r => ({ ...r, user_id: USER_ID }));
-  const exRows = parseExercise(exMd).map(r => ({ ...r, user_id: USER_ID }));
+  const parsedBodyRows = parseBody(bodyMd);
+  const parsedSleepRows = parseSleep(sleepMd);
+  const parsedExerciseRows = parseExercise(exMd);
+  const parsedWorkoutRows = addWorkoutRecordKeys(parseWorkout(workoutMd));
+
+  if (dryRun) {
+    console.log(`同期 dry-run: body_records ${parsedBodyRows.length}件 / sleep_records ${parsedSleepRows.length}件 / exercise_records ${parsedExerciseRows.length}件 / workout_records ${parsedWorkoutRows.length}件`);
+    return;
+  }
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const bodyRows = parsedBodyRows.map(r => ({ ...r, user_id: USER_ID }));
+  const sleepRows = parsedSleepRows.map(r => ({ ...r, user_id: USER_ID }));
+  const exRows = parsedExerciseRows.map(r => ({ ...r, user_id: USER_ID }));
+  const workoutRows = parsedWorkoutRows.map(r => ({ ...r, user_id: USER_ID }));
 
   const body = await supabase
     .from('body_records')
@@ -54,7 +68,14 @@ async function main() {
     .upsert(exRows, { onConflict: 'user_id,date,type' });
   if (ex.error) throw new Error(`exercise_records: ${ex.error.message}`);
 
-  console.log(`同期完了: body_records ${bodyRows.length}件 / sleep_records ${sleepSynced}件 / exercise_records ${exRows.length}件`);
+  if (workoutRows.length) {
+    const workouts = await supabase
+      .from('workout_records')
+      .upsert(workoutRows, { onConflict: 'user_id,record_key' });
+    if (workouts.error) throw new Error(`workout_records: ${workouts.error.message}`);
+  }
+
+  console.log(`同期完了: body_records ${bodyRows.length}件 / sleep_records ${sleepSynced}件 / exercise_records ${exRows.length}件 / workout_records ${workoutRows.length}件`);
 }
 
 main().catch(err => {

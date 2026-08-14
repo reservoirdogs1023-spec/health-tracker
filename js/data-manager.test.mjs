@@ -48,6 +48,16 @@ test('両方そろっていれば普通に保存できる', async () => {
   assert.deepEqual(await d.getBody('2026-08-07'), { date: '2026-08-07', weight: 71.5, bodyFat: 16.2 });
 });
 
+test('体組成の一覧は片方だけの記録も欠落させず返す', async () => {
+  const d = dm();
+  await d.setBody('2026-08-06', '71.5', '');
+  await d.setBody('2026-08-07', '', '16.2');
+  assert.deepEqual(await d.getBodyRecords(), [
+    { date: '2026-08-06', weight: 71.5, bodyFat: null },
+    { date: '2026-08-07', weight: null, bodyFat: 16.2 },
+  ]);
+});
+
 test('睡眠・運動は従来どおり動く', async () => {
   const d = dm();
   await d.setSleep('2026-08-07', '6.5');
@@ -90,6 +100,53 @@ test('合計と内訳が一致していれば保存できる', async () => {
   });
 });
 
+test('睡眠の一覧は内訳不明を null のまま返す', async () => {
+  const d = dm();
+  await d.setSleep('2026-08-06', '6.5');
+  await d.setSleep('2026-08-07', '8', '7', '1');
+  assert.deepEqual(await d.getSleepRecords(), [
+    { date: '2026-08-06', hours: 6.5, night_hours: null, nap_hours: null },
+    { date: '2026-08-07', hours: 8, night_hours: 7, nap_hours: 1 },
+  ]);
+});
+
+test('運動の一覧は種目と任意詳細を返す', async () => {
+  const d = dm();
+  await d.setExercise('2026-08-07', 'RUN', '5km');
+  await d.setExercise('2026-08-07', 'HIIT');
+  assert.deepEqual(await d.getExerciseRecords(), [
+    { date: '2026-08-07', type: 'RUN', detail: '5km' },
+    { date: '2026-08-07', type: 'HIIT', detail: null },
+  ]);
+});
+
+test('Apple Health ワークアウト一覧は距離なしを null のまま返す', async () => {
+  const d = createDataManager(createMemoryBackend({
+    workout_records: [{
+      date: '2026-08-02', time: '09:30:00', species: 'Cycling',
+      duration_minutes: 45, distance_km: null, calories_kcal: 350,
+    }],
+  }));
+  assert.deepEqual(await d.getWorkoutRecords(), [{
+    date: '2026-08-02', time: '09:30:00', species: 'Cycling',
+    durationMinutes: 45, distanceKm: null, caloriesKcal: 350,
+  }]);
+});
+
+test('workout_records が未作成でも一覧は空配列になり他機能を止めない', async () => {
+  const inner = createMemoryBackend();
+  const d = createDataManager({
+    ...inner,
+    list: async table => {
+      if (table === 'workout_records') throw new Error("Could not find the table 'public.workout_records' in the schema cache");
+      return inner.list(table);
+    },
+  });
+  assert.deepEqual(await d.getWorkoutRecords(), []);
+  await d.setBody('2026-08-07', '71.5', '');
+  assert.equal((await d.getBody('2026-08-07')).weight, 71.5);
+});
+
 test('あとから合計だけ直しても内訳が消えない…が、食い違えば弾く', async () => {
   const d = dm();
   await d.setSleep('2026-08-07', '8', '7', '1');
@@ -115,6 +172,11 @@ const backendWithoutSleepTable = () => {
 test('睡眠テーブルが無くても getSleep は落ちずに null を返す', async () => {
   const d = createDataManager(backendWithoutSleepTable());
   assert.equal(await d.getSleep('2026-08-07'), null);
+});
+
+test('睡眠テーブルが無くても睡眠一覧は空配列を返す', async () => {
+  const d = createDataManager(backendWithoutSleepTable());
+  assert.deepEqual(await d.getSleepRecords(), []);
 });
 
 test('睡眠テーブルが無くても体組成・運動は普通に使える', async () => {

@@ -4,6 +4,8 @@
   "type": "module",
   "scripts": {
     "test": "node --test \"sync/*.test.mjs\" \"js/*.test.mjs\"",
+    "import:workouts": "node import-apple-workouts.mjs",
+    "import:workouts:auto": "node import-health-auto-export-workouts.mjs",
     "sync": "node --env-file=.env sync-to-supabase.mjs",
     "pull": "node --env-file=.env pull-from-supabase.mjs"
   },

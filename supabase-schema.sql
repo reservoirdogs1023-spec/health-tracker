@@ -26,6 +26,21 @@ create table if not exists sleep_records (
   unique (user_id, date)
 );
 
+create table if not exists workout_records (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) default auth.uid(),
+  record_key text not null,
+  date date not null,
+  time time not null,
+  species text not null check (species in ('Walking', 'Running', 'Cycling')),
+  duration_minutes numeric,
+  distance_km numeric,
+  calories_kcal numeric,
+  unique (user_id, record_key)
+);
+-- 距離は種目を問わず NULL 可。自転車は現状 Apple Health に距離統計が無いだけで、
+-- 将来 GPS で記録されたら保存できる必要があるため、種目で距離を縛る制約は置かない。
+
 -- tasks: 2026-08-07 に本アプリから分離済み（タスク管理は Obsidian 側で完結）。
 -- 過去データを保持するためテーブルは残してあるが、アプリからは読み書きしない。
 create table if not exists tasks (
@@ -42,6 +57,7 @@ alter table exercise_records add column if not exists detail text;
 alter table body_records enable row level security;
 alter table exercise_records enable row level security;
 alter table sleep_records enable row level security;
+alter table workout_records enable row level security;
 alter table tasks enable row level security;
 
 -- One policy per table: owner can do everything on their own rows.
@@ -50,6 +66,8 @@ create policy "own rows" on body_records
 create policy "own rows" on exercise_records
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own rows" on sleep_records
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "own rows" on workout_records
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own rows" on tasks
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);

@@ -3,1321 +3,1499 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f4f1eb">
   <title>Health Tracker</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    /* === DESIGN TOKENS === */
     :root {
-      --bg: #eef0f4;
-      --surface: #ffffff;
-      --surface-muted: #f7f8fa;
-      --border: #e7eaef;
-      --border-strong: #d6dae1;
-      --text: #1c2330;
-      --text-muted: #6b7686;
-      --text-soft: #9aa3b2;
-      --accent: #2f6df6;
-      --accent-hover: #1d5be0;
-      --accent-soft: #ebf2ff;
-      --accent-border: #c9dcff;
-      --green: #15a34a;
-      --green-soft: #e9f8ef;
-      --amber: #c77514;
-      --amber-soft: #fdf2e3;
-      --teal: #0d9488;
-      --teal-soft: #e4f6f3;
-      --violet: #6d4ed6;
-      --violet-soft: #f1ecfd;
-      --radius: 14px;
-      --radius-md: 10px;
-      --radius-sm: 7px;
-      --shadow-sm: 0 1px 2px rgba(20,28,45,.04), 0 1px 3px rgba(20,28,45,.05);
-      --shadow-md: 0 6px 20px rgba(20,28,45,.07);
+      --canvas: #f4f1eb;
+      --surface: #fffdf8;
+      --surface-strong: #ffffff;
+      --surface-tint: #f8f6f0;
+      --ink: #16231f;
+      --ink-muted: #66736e;
+      --ink-soft: #929c97;
+      --line: #e6e2d8;
+      --line-strong: #d4cfc3;
+      --forest: #173f35;
+      --forest-hover: #0f3028;
+      --mint: #dcebe3;
+      --mint-strong: #98c2ad;
+      --coral: #e26f52;
+      --coral-soft: #f8e4dd;
+      --sun: #e5ab45;
+      --sun-soft: #faeed5;
+      --blue: #4278a8;
+      --blue-soft: #e1ebf2;
+      --danger: #b94a3f;
+      --shadow: 0 18px 60px rgba(38, 47, 42, .09);
+      --radius-xl: 24px;
+      --radius-lg: 18px;
+      --radius-md: 12px;
       --font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
     }
 
-    /* === RESET === */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html { min-width: 320px; background: var(--canvas); }
 
     body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 8% 3%, rgba(220, 235, 227, .9), transparent 28rem),
+        radial-gradient(circle at 95% 95%, rgba(250, 238, 213, .78), transparent 30rem),
+        var(--canvas);
       font-family: var(--font);
-      background: var(--bg);
-      color: var(--text);
+      letter-spacing: -.015em;
       -webkit-font-smoothing: antialiased;
-      letter-spacing: -0.01em;
     }
 
-    /* === LAYOUT === */
+    button, input, select { font: inherit; }
+
+    button { -webkit-tap-highlight-color: transparent; }
+
     .app {
-      max-width: 1400px;
-      height: calc(100vh - 32px);
+      width: min(1600px, calc(100% - 32px));
+      min-height: calc(100vh - 32px);
       margin: 16px auto;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow-md);
       overflow: hidden;
-      display: flex;
-      flex-direction: column;
+      background: rgba(255, 253, 248, .96);
+      border: 1px solid rgba(212, 207, 195, .9);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow);
     }
-    .header, .tabs { flex: 0 0 auto; }
 
-    /* === HEADER === */
-    .header {
-      background: var(--surface);
-      color: var(--text);
-      padding: 14px 22px;
+    .topbar {
+      min-height: 78px;
+      padding: 15px 20px 15px 24px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      border-bottom: 1px solid var(--border);
+      gap: 20px;
+      border-bottom: 1px solid var(--line);
     }
-    .header h1 {
-      font-size: 17px;
+
+    .brand { display: flex; align-items: center; gap: 13px; min-width: 0; }
+
+    .brand-mark {
+      width: 40px;
+      height: 40px;
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      border-radius: 13px;
+      color: #fff;
+      background: var(--forest);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.12);
+    }
+
+    .brand-mark svg { width: 21px; height: 21px; }
+    .brand-copy { min-width: 0; }
+
+    .eyebrow {
+      margin: 0 0 3px;
+      color: var(--ink-soft);
+      font-size: 10px;
       font-weight: 800;
-      letter-spacing: -0.02em;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    h1 { margin: 0; font-size: 20px; line-height: 1.1; letter-spacing: -.035em; }
+
+    .topbar-actions { display: flex; align-items: center; gap: 16px; }
+
+    .sync-status {
       display: flex;
       align-items: center;
-      gap: 9px;
+      gap: 7px;
+      color: var(--ink-muted);
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
     }
-    .header h1::before {
-      content: '';
-      width: 10px;
-      height: 10px;
+
+    .sync-dot {
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
-      background: var(--accent);
-      box-shadow: 0 0 0 4px var(--accent-soft);
+      background: var(--mint-strong);
+      box-shadow: 0 0 0 4px rgba(152, 194, 173, .18);
     }
-    .header-actions { display: flex; gap: 8px; }
 
-    /* === TABS === */
-    .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); background: var(--surface); padding: 0 18px; }
-    .tab-btn {
-      padding: 13px 16px;
-      border: none; background: transparent; cursor: pointer;
-      font-family: var(--font);
-      font-size: 13px; font-weight: 600; color: var(--text-muted);
-      border-bottom: 2px solid transparent; margin-bottom: -1px;
-      transition: color .15s;
-    }
-    .tab-btn:hover { color: var(--text); }
-    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .sync-status[data-state="loading"] .sync-dot { animation: pulse 1.2s ease-in-out infinite; }
+    .sync-status[data-state="error"] .sync-dot { background: var(--danger); box-shadow: 0 0 0 4px rgba(185, 74, 63, .13); }
 
-    /* === TAB CONTENT === */
-    .tab-panel { display: none; }
-    .tab-panel.active { display: flex; flex-direction: column; flex: 1; min-height: 0; }
-    #dashboard.tab-panel.active { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    @keyframes pulse { 50% { opacity: .35; transform: scale(.78); } }
 
-    /* === TRACKER LAYOUT: sticky sidebar + scrollable calendar === */
-    .tracker-body {
+    .period-control {
+      padding: 4px;
       display: flex;
-      align-items: stretch;
-      gap: 0;
-      flex: 1;
-      min-height: 0;
-      overflow: hidden;
+      gap: 3px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--surface-tint);
     }
 
-    /* CENTER PANEL: flex layout for records + calendar side-by-side */
-    .center-panel {
-      flex: 1;
-      min-width: 0;  /* prevents flex overflow */
-      min-height: 0;
-      padding: 12px;
-      overflow: hidden;
+    .period-btn {
+      min-height: 33px;
+      padding: 7px 13px;
+      border: 0;
+      border-radius: 9px;
+      color: var(--ink-muted);
+      background: transparent;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 700;
+      transition: color .16s, background .16s, box-shadow .16s;
+    }
+
+    .period-btn:hover { color: var(--ink); }
+    .period-btn.active { color: var(--forest); background: #fff; box-shadow: 0 2px 8px rgba(38,47,42,.08); }
+
+    .workspace {
+      min-height: calc(100vh - 111px);
+      display: grid;
+      grid-template-columns: 328px minmax(0, 1fr);
+    }
+
+    .entry-panel {
+      min-width: 0;
+      padding: 22px;
+      background: var(--surface-tint);
+      border-right: 1px solid var(--line);
+    }
+
+    .entry-head {
+      margin-bottom: 18px;
       display: flex;
-      flex-direction: column;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
     }
 
-    /* === BUTTONS === */
-    .btn {
-      padding: 9px 16px; border: 1px solid transparent; border-radius: var(--radius-sm);
-      cursor: pointer; font-family: var(--font); font-size: 13px; font-weight: 600;
-      letter-spacing: -0.01em; transition: background .15s, border-color .15s, transform .05s;
-    }
-    .btn:active { transform: translateY(1px); }
-    .btn-primary { background: var(--accent); color: white; }
-    .btn-primary:hover { background: var(--accent-hover); }
-    .btn-sm { padding: 7px 12px; font-size: 12px; }
-    .btn-secondary { background: var(--surface); color: var(--text-muted); border-color: var(--border-strong); }
-    .btn-secondary:hover { background: var(--surface-muted); color: var(--text); border-color: var(--text-soft); }
+    .entry-head h2, .card-heading h2 { margin: 0; font-size: 15px; letter-spacing: -.025em; }
+    .entry-head p, .card-heading p { margin: 5px 0 0; color: var(--ink-muted); font-size: 11px; line-height: 1.55; }
 
-    /* === FORM ELEMENTS === */
-    .form-group { display: flex; flex-direction: column; gap: 6px; }
-    .form-group label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; }
-    input[type="text"],
-    input[type="number"],
-    input[type="date"] {
-      padding: 9px 11px;
-      border: 1px solid var(--border-strong);
-      border-radius: var(--radius-sm);
-      font-family: var(--font);
-      font-size: 13px;
-      color: var(--text);
-      background: var(--surface);
+    .date-badge {
+      padding: 6px 9px;
+      border-radius: 999px;
+      color: var(--forest);
+      background: var(--mint);
+      font-size: 10px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .form-section {
+      margin: 0 0 12px;
+      padding: 15px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      background: var(--surface-strong);
+    }
+
+    .section-label {
+      margin: 0 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--ink);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .section-icon {
+      width: 24px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      color: var(--forest);
+      background: var(--mint);
+      font-size: 12px;
+    }
+
+    .field { min-width: 0; }
+    .field + .field { margin-top: 10px; }
+    .field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .field-grid .field + .field { margin-top: 0; }
+
+    label {
+      margin: 0 0 6px;
+      display: block;
+      color: var(--ink-muted);
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .input-wrap { position: relative; }
+
+    input, select {
       width: 100%;
+      min-height: 40px;
+      padding: 9px 11px;
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      outline: none;
+      color: var(--ink);
+      background: #fff;
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
       transition: border-color .15s, box-shadow .15s;
     }
-    input[type="text"]:focus,
-    input[type="number"]:focus,
-    input[type="date"]:focus {
-      outline: none;
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px var(--accent-soft);
-    }
-    input::placeholder { color: var(--text-soft); }
 
-    /* === CALENDAR NAV & STATS BAR === */
-    .calendar-nav {
+    input[type="number"] { padding-right: 34px; }
+    input:focus, select:focus { border-color: var(--mint-strong); box-shadow: 0 0 0 3px rgba(152,194,173,.2); }
+    input::placeholder { color: #b2b9b5; }
+
+    .unit {
+      position: absolute;
+      right: 11px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--ink-soft);
+      font-size: 10px;
+      font-weight: 700;
+      pointer-events: none;
+    }
+
+    .field-note { margin: 7px 0 0; color: var(--ink-soft); font-size: 9px; line-height: 1.45; }
+
+    .btn {
+      min-height: 42px;
+      padding: 10px 14px;
+      border: 0;
+      border-radius: 11px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 800;
+      transition: transform .08s, background .15s, opacity .15s;
+    }
+
+    .btn:active { transform: translateY(1px); }
+    .btn:disabled { cursor: wait; opacity: .62; }
+    .btn-primary { width: 100%; color: #fff; background: var(--forest); }
+    .btn-primary:hover:not(:disabled) { background: var(--forest-hover); }
+
+    .form-message {
+      min-height: 17px;
+      margin: 7px 2px 0;
+      color: var(--ink-muted);
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1.5;
+    }
+
+    .form-message.success { color: #37785d; }
+    .form-message.error { color: var(--danger); }
+
+    .panel-divider { height: 1px; margin: 19px 0; background: var(--line); }
+
+    .exercise-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+    .exercise-actions { margin-top: 9px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 9px; }
+    .exercise-actions .btn { min-height: 40px; padding-inline: 18px; }
+
+    .exercise-list { margin-top: 13px; display: grid; gap: 7px; }
+
+    .exercise-row {
+      min-height: 38px;
+      padding: 7px 8px 7px 10px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 12px 18px;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-    }
-    .calendar-nav h2 { font-size: 15px; font-weight: 700; letter-spacing: -0.02em; }
-
-    .stats-bar {
-      display: flex;
       gap: 8px;
-      padding: 10px 18px;
-      background: var(--surface-muted);
-      border-bottom: 1px solid var(--border);
-      flex-wrap: wrap;
-    }
-    .stat-chip {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 12px;
-      color: var(--text-muted);
-      background: var(--surface);
-      padding: 5px 11px;
-      border-radius: 20px;
-      border: 1px solid var(--border);
-      font-weight: 600;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(255,255,255,.68);
     }
 
-    /* === CONTENT WRAPPER: records + calendar side-by-side === */
-    .content-wrapper {
-      display: flex;
-      gap: 0;
-      flex: 1;
-      min-width: 0;
-      min-height: 0;
-    }
+    .exercise-name { min-width: 0; color: var(--ink); font-size: 10px; font-weight: 800; }
+    .exercise-detail { margin-left: 5px; color: var(--ink-muted); font-weight: 500; }
 
-    /* === CALENDAR GRID ===
-       KEY: no height:100vh, no overflow:hidden on parents.
-       Cells use min-height only — they grow to fit content.
-    */
-    .calendar-grid {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      grid-template-rows: auto;          /* header row: content height */
-      grid-auto-rows: minmax(0, 1fr);    /* week rows split height evenly */
-      border-left: 1px solid var(--border);
-      border-top: 1px solid var(--border);
-      flex: 1;
-      min-width: 0;
-      min-height: 0;
-    }
-
-    .cal-header-cell {
-      text-align: center;
-      font-size: 10px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: var(--text-soft);
-      padding: 7px 4px;
-      background: var(--surface-muted);
-      border-right: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .cal-cell {
-      min-height: 0;              /* fills its grid row; scrolls if overcrowded */
-      overflow-y: auto;
-      border-right: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-      padding: 5px;
-      background: var(--surface);
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-      transition: background .12s;
-    }
-    /* slim scrollbar inside crowded cells */
-    .cal-cell::-webkit-scrollbar { width: 5px; }
-    .cal-cell::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
-    /* cell contents keep their height and scroll instead of squishing */
-    .cal-cell > * { flex-shrink: 0; }
-    .cal-cell:not(.empty):hover { background: var(--surface-muted); }
-
-    .cal-cell.today { background: var(--accent-soft); }
-    .cal-cell.empty { background: var(--surface-muted); }
-
-    /* drop target highlight */
-
-    .cal-day-num {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--text-muted);
-      margin-bottom: 1px;
-      line-height: 1;
-      flex-shrink: 0;
-      display: flex;
-      gap: 2px;
-      align-items: center;
-      width: 100%;
-    }
-
-    .cal-day-num > div:first-child {
-      flex-shrink: 0;
-    }
-
-    .cal-body-data {
-      font-size: 10px;
-      color: var(--text);
-      font-weight: 600;
-      line-height: 1;
-      white-space: nowrap;
-      text-align: center;
-      flex: 1;
-      font-variant-numeric: tabular-nums;
-    }
-    .cal-cell.today .cal-day-num {
-      width: 100%;
-      font-size: 11px;
-    }
-
-    .cal-cell.today .cal-day-num > div:first-child {
-      background: var(--accent);
-      color: white;
-      border-radius: 50%;
-      width: 20px;
-      height: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      font-weight: 700;
-    }
-
-    .ex-detail-row { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; padding: 2px 0; }
-    .ex-detail-text { color: var(--text-muted); }
-    .ex-detail-empty { font-size: 12px; color: var(--text-muted); }
-
-    .cal-exercise-icons {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      width: 100%;
-    }
-    .cal-ex-badge {
-      display: block;
-      background: var(--surface-muted);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 2px 5px;
-      font-size: 9px;
-      font-weight: 600;
-      color: var(--text-muted);
-      width: 100%;
-      text-align: center;
-      box-sizing: border-box;
-    }
-    /* exercise type colors — tracker badges use light tints */
-    .cal-ex-badge.ex-muscle { background: #fdecec; border-color: #f5cccc; color: #cf3a3a; }
-    .cal-ex-badge.ex-cardio { background: #eaf1ff; border-color: #c9dcff; color: #2f6df6; }
-    .cal-ex-badge.ex-hiit   { background: #fce9f5; border-color: #f1c8e4; color: #c81f93; }
-
-    /* === RECORDS PANEL === */
-    .records-panel {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .records-panel-top {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      padding: 12px;
-      background: var(--surface-muted);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-md);
-      margin-right: 12px;
-      transition: max-height 0.2s;
-      overflow: hidden;
-      width: 156px;
-      flex-shrink: 0;
-      align-self: flex-start;
-    }
-
-    .records-panel-top.collapsed {
-      max-height: 40px;
-      margin-right: 8px;
-    }
-
-    .records-panel-top > div:first-child {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      align-items: stretch;
-    }
-
-    .records-toggle-btn {
-      padding: 3px 6px;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text-muted);
-      border: 1px solid var(--border-strong);
-      background: var(--surface);
-      cursor: pointer;
-      border-radius: var(--radius-sm);
-      align-self: flex-end;
-      height: 26px;
-      width: 26px;
-      transition: background .15s, color .15s;
-    }
-    .records-toggle-btn:hover { background: var(--accent-soft); color: var(--accent); border-color: var(--accent-border); }
-
-    .records-panel-top .form-group {
-      display: contents;
-    }
-
-    .records-panel-top .form-group label {
-      display: block;
-      font-size: 10px;
-    }
-
-    .records-panel-top input[type="date"],
-    .records-panel-top input[type="number"] {
-      padding: 4px 6px;
-      font-size: 11px;
-      height: 24px;
-    }
-
-    .records-panel-top .btn {
-      padding: 4px 10px;
-      font-size: 11px;
-      height: 24px;
-    }
-
-
-    .exercise-grid-top {
-      display: flex;
-      gap: 3px;
-      grid-column: 6;
-    }
-
-    .ex-btn-top {
-      padding: 6px 8px;
-      border: 1px solid var(--border-strong);
-      border-radius: var(--radius-sm);
-      background: var(--surface);
-      cursor: pointer;
-      font-family: var(--font);
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--text-muted);
-      text-align: center;
-      transition: all 0.15s;
-      height: 30px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .ex-btn-top:hover { background: var(--surface-muted); color: var(--text); }
-    .ex-btn-top.active {
-      background: var(--accent-soft);
-      border-color: var(--accent-border);
-      color: var(--accent-hover);
-    }
-    /* exercise type colors on the records-panel toggles (light tints) */
-    .ex-btn-top[data-ex="muscleTraining"].active { background: #fdecec; border-color: #f0b9b9; color: #cf3a3a; }
-    .ex-btn-top[data-ex="cardio"].active         { background: #eaf1ff; border-color: #c9dcff; color: #1d5be0; }
-    .ex-btn-top[data-ex="hiit"].active           { background: #fce9f5; border-color: #eeb9dd; color: #c81f93; }
-
-    .exercise-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 4px;
-    }
-
-    .ex-btn {
-      padding: 6px 2px;
-      border: 1px solid var(--border-strong);
-      border-radius: var(--radius-sm);
-      background: var(--surface);
-      cursor: pointer;
-      font-family: var(--font);
-      font-size: 10px;
-      font-weight: 600;
-      color: var(--text-muted);
-      text-align: center;
-      transition: all 0.15s;
-    }
-    .ex-btn:hover { background: var(--surface-muted); }
-    .ex-btn.active {
-      background: var(--accent-soft);
-      border-color: var(--accent-border);
-      color: var(--accent-hover);
-    }
-
-    .streak-row {
-      display: none;
-    }
-
-    .streak-chip {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      justify-content: space-between;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 6px 11px;
-      font-size: 12px;
-    }
-    .streak-chip .streak-label { color: var(--text-muted); }
-    .streak-chip .streak-num {
-      font-weight: 700;
-      color: var(--accent);
-      font-size: 14px;
-      font-variant-numeric: tabular-nums;
-    }
-
-    /* === PERIOD BUTTONS === */
-    .period-btn {
-      padding: 8px 18px;
-      border: 1px solid var(--border-strong);
-      border-radius: 20px;
-      background: var(--surface);
-      color: var(--text-muted);
-      cursor: pointer;
-      font-family: var(--font);
-      font-size: 13px;
-      font-weight: 600;
-      transition: all 0.15s;
-    }
-    .period-btn:hover { background: var(--surface-muted); color: var(--text); }
-    .period-btn.active {
-      border-color: var(--accent);
-      background: var(--accent);
-      color: white;
-    }
-
-    /* === DASHBOARD === */
-    .chart-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow-sm);
-      padding: 18px 20px;
-      margin-bottom: 18px;
-    }
-    /* Dashboard: 実寸グラフを縦に並べてスクロール（潰さない） */
-    .dash-inner {
-      max-width: 1200px;
-      width: 100%;
-      margin: 0 auto;
-      padding: 22px 24px;
+    .icon-btn {
+      width: 25px;
+      height: 25px;
       flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      border: 0;
+      border-radius: 8px;
+      color: var(--ink-soft);
+      background: transparent;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .icon-btn:hover { color: var(--danger); background: var(--coral-soft); }
+    .empty-list { padding: 7px 2px; color: var(--ink-soft); font-size: 10px; }
+
+    .dashboard {
+      min-width: 0;
+      padding: 22px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 14px;
     }
-    .dash-periods { flex: 0 0 auto; display: flex; gap: 8px; justify-content: center; }
+
+    .summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+
+    .summary-card {
+      min-width: 0;
+      padding: 13px 14px;
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      align-items: center;
+      gap: 10px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255,255,255,.72);
+    }
+
+    .summary-icon {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 11px;
+      font-size: 14px;
+    }
+
+    .summary-card:nth-child(1) .summary-icon { color: var(--forest); background: var(--mint); }
+    .summary-card:nth-child(2) .summary-icon { color: var(--coral); background: var(--coral-soft); }
+    .summary-card:nth-child(3) .summary-icon { color: var(--blue); background: var(--blue-soft); }
+    .summary-card:nth-child(4) .summary-icon { color: #a46b15; background: var(--sun-soft); }
+
+    .summary-label { margin: 0; color: var(--ink-muted); font-size: 9px; font-weight: 800; letter-spacing: .035em; text-transform: uppercase; }
+    .summary-value { margin: 2px 0 0; overflow: hidden; font-size: 18px; font-weight: 800; letter-spacing: -.04em; text-overflow: ellipsis; white-space: nowrap; }
+    .summary-value small { margin-left: 2px; color: var(--ink-muted); font-size: 9px; letter-spacing: 0; }
+    .summary-meta { margin: 2px 0 0; color: var(--ink-soft); font-size: 8px; white-space: nowrap; }
+
+    .charts-grid {
+      min-height: 700px;
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      grid-template-rows: minmax(250px, .8fr) auto minmax(330px, 1.2fr);
+      gap: 14px;
+    }
 
     .chart-card {
+      min-width: 0;
+      min-height: 0;
+      padding: 17px 18px 15px;
       display: flex;
       flex-direction: column;
-      min-height: 0;
-      margin-bottom: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      background: rgba(255,255,255,.82);
     }
-    .chart-card h3 {
-      font-size: 14px;
-      font-weight: 700;
-      letter-spacing: -0.01em;
+
+    .chart-card.body-chart { grid-column: 1 / -1; }
+    .chart-card.heatmap-card { grid-column: 1 / -1; min-height: 250px; }
+    .chart-card.sleep-chart { grid-column: span 5; }
+    .chart-card.activity-chart { grid-column: span 7; }
+
+    .card-heading {
       margin-bottom: 12px;
-      color: var(--text);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .chart-legend { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px 11px; }
+    .legend-item { display: inline-flex; align-items: center; gap: 5px; color: var(--ink-muted); font-size: 9px; font-weight: 700; white-space: nowrap; }
+    .legend-toggle { padding: 3px 6px; border: 1px solid transparent; border-radius: 999px; background: none; cursor: pointer; font-family: inherit; }
+    .legend-toggle:hover { border-color: var(--line); }
+    .legend-toggle[aria-pressed="false"] { opacity: .38; text-decoration: line-through; }
+    .legend-dot { width: 7px; height: 7px; border-radius: 50%; }
+
+    .workout-filter { display: grid; gap: 4px; color: var(--ink-muted); font-size: 9px; font-weight: 800; }
+    .workout-filter select { min-width: 132px; min-height: 34px; padding: 6px 28px 6px 9px; font-size: 10px; }
+    .workout-stats { margin: 0 0 11px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+    .workout-stat { min-width: 0; padding: 7px 8px; border-radius: 9px; background: var(--surface-tint); }
+    .workout-stat-label { margin: 0; color: var(--ink-soft); font-size: 8px; font-weight: 800; }
+    .workout-stat-value { margin: 2px 0 0; overflow: hidden; color: var(--ink); font-size: 11px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+
+    .heatmap-card .card-heading { margin-bottom: 7px; align-items: center; }
+    .heatmap-summary { color: var(--forest); font-size: 10px; font-weight: 800; white-space: nowrap; }
+    .heatmap-scroll {
+      min-width: 0;
+      max-width: 100%;
+      padding: 2px 0 7px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      overscroll-behavior-inline: contain;
+      contain: inline-size;
+    }
+    .heatmap-grid {
+      --heatmap-cell: 13px;
+      width: max-content;
+      display: grid;
+      grid-template-columns: 26px repeat(var(--heatmap-weeks), var(--heatmap-cell));
+      grid-template-rows: 14px repeat(7, var(--heatmap-cell));
+      gap: 3px;
+      align-items: center;
+    }
+    .heatmap-month, .heatmap-weekday { color: var(--ink-soft); font-size: 9px; font-weight: 700; line-height: 1; }
+    .heatmap-month { grid-row: 1; white-space: nowrap; }
+    .heatmap-weekday { grid-column: 1; justify-self: end; padding-right: 2px; }
+    .heatmap-cell {
+      width: var(--heatmap-cell);
+      height: var(--heatmap-cell);
+      padding: 0;
+      border: 1px solid rgba(23, 63, 53, .08);
+      border-radius: 2px;
+      background: #edf0ed;
+      cursor: pointer;
+    }
+    .heatmap-cell[data-level="1"] { background: #cbe2d5; }
+    .heatmap-cell[data-level="2"] { background: #83bd9c; }
+    .heatmap-cell[data-level="3"] { background: #418265; }
+    .heatmap-cell[data-level="4"] { background: #173f35; }
+    .heatmap-cell.future { opacity: .46; }
+    .heatmap-cell:hover, .heatmap-cell.selected { border-color: var(--coral); box-shadow: 0 0 0 1px var(--coral); }
+    .heatmap-cell:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+    .heatmap-footer {
+      min-height: 22px;
+      margin-top: 5px;
       display: flex;
       align-items: center;
-      gap: 8px;
-      flex: 0 0 auto;
-    }
-    /* Dashboard rows: charts side-by-side（高さは実寸固定） */
-    .chart-row {
-      display: grid;
-      gap: 16px;
-      flex: 0 0 auto;
-    }
-    .chart-row.two   { grid-template-columns: repeat(2, 1fr); }
-    .chart-row.three { grid-template-columns: repeat(3, 1fr); }
-    .chart-box { position: relative; flex: none; height: 300px; }
-    /* Category gauge grid (3 columns: 筋トレ / 有酸素 / HIIT) */
-    .ex-gauge-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      grid-auto-rows: auto;
+      justify-content: space-between;
       gap: 12px;
-      flex: 0 0 auto;
     }
-    .ex-gauge-grid .chart-box { height: 160px; }
-    .ex-gauge-card { padding: 12px 14px; }
-    .ex-gauge-card h3 { font-size: 13px; margin-bottom: 6px; }
-    /* Per-exercise day-count breakdown under each donut */
-    .ex-breakdown {
-      flex: 0 0 auto;
-      width: 100%;
-      margin-top: 10px;
-      border-collapse: collapse;
-      font-size: 12px;
-      font-variant-numeric: tabular-nums;
-    }
-    .ex-breakdown td {
-      padding: 3px 2px;
-      border-top: 1px solid var(--border, #eaedf2);
-    }
-    .ex-breakdown td:last-child {
-      text-align: right;
-      font-weight: 600;
-      color: var(--text-muted);
-      white-space: nowrap;
-    }
-    /* Donut gauge center label */
-    .gauge-center {
+    .heatmap-detail { min-width: 0; color: var(--ink-muted); font-size: 9px; }
+    .heatmap-detail strong { color: var(--ink); }
+    .heatmap-legend { flex: 0 0 auto; display: flex; align-items: center; gap: 3px; color: var(--ink-soft); font-size: 8px; }
+    .heatmap-legend-cell { width: 9px; height: 9px; border: 1px solid rgba(23, 63, 53, .08); border-radius: 2px; }
+
+    .chart-stage { position: relative; min-height: 0; flex: 1; }
+    .chart-stage canvas { width: 100% !important; height: 100% !important; }
+
+    .empty-state {
       position: absolute;
       inset: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      pointer-events: none;
+      display: none;
+      place-items: center;
+      color: var(--ink-soft);
+      font-size: 11px;
       text-align: center;
     }
-    .gauge-center .gauge-pct {
-      font-size: 30px;
-      font-weight: 800;
-      letter-spacing: -0.03em;
-      line-height: 1;
-      font-variant-numeric: tabular-nums;
-    }
-    .gauge-center .gauge-sub {
-      margin-top: 5px;
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--text-muted);
-      font-variant-numeric: tabular-nums;
-    }
-    @media (max-width: 760px) {
-      .chart-row.two, .chart-row.three { grid-template-columns: 1fr; }
-      .ex-gauge-grid { grid-template-columns: 1fr; }
-      /* Mobile: dashboard scrolls vertically; charts get real fixed heights
-         instead of being squeezed into one viewport-height (flex:1). */
-      #dashboard.tab-panel.active { overflow-y: auto; -webkit-overflow-scrolling: touch; }
-      #dashboard .dash-inner { flex: none; }
-      #dashboard .chart-row, #dashboard .ex-gauge-grid { flex: none; }
-      #dashboard .ex-gauge-grid { grid-auto-rows: auto; }
-      #dashboard .chart-box { height: 220px; flex: none; }
-      #dashboard .ex-gauge-grid .chart-box { height: 130px; }
 
-      /* Mobile: トラッカーも高さ固定をやめて全体をスクロール表示 */
-      #tracker.tab-panel.active { overflow-y: auto; -webkit-overflow-scrolling: touch; }
-      .tracker-body { flex-direction: column; overflow: visible; }
-      .center-panel { overflow: visible; padding: 10px; }
-      .content-wrapper { display: block; }
-      .records-panel-top { margin-bottom: 12px; }
-      .calendar-grid { overflow: visible; }
+    .toast {
+      position: fixed;
+      top: 18px;
+      left: 50%;
+      z-index: 1000;
+      max-width: min(440px, calc(100% - 32px));
+      padding: 11px 15px;
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 12px;
+      color: #fff;
+      background: var(--forest);
+      box-shadow: 0 10px 30px rgba(23,63,53,.22);
+      font-size: 11px;
+      font-weight: 700;
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, -12px);
+      transition: opacity .2s, transform .2s;
+    }
+
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .toast.error { background: var(--danger); }
+
+    @media (min-width: 1101px) and (min-height: 820px) {
+      .workspace { height: calc(100vh - 111px); min-height: 708px; }
+      .entry-panel { overflow-y: auto; }
+      .dashboard { overflow-x: hidden; overflow-y: auto; }
+      .charts-grid { min-height: 0; }
+    }
+
+    @media (max-width: 1100px) {
+      .workspace { grid-template-columns: 300px minmax(0, 1fr); }
+      .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .charts-grid { grid-template-rows: 270px auto 290px 340px; }
+      .chart-card.sleep-chart, .chart-card.activity-chart { grid-column: 1 / -1; }
+    }
+
+    @media (max-width: 760px) {
+      .app { width: 100%; min-height: 100vh; margin: 0; border: 0; border-radius: 0; }
+      .topbar { padding: 13px 14px; align-items: flex-start; }
+      .brand-mark { width: 36px; height: 36px; border-radius: 11px; }
+      .eyebrow, .sync-status { display: none; }
+      h1 { margin-top: 8px; font-size: 17px; }
+      .topbar-actions { gap: 0; }
+      .period-btn { min-height: 31px; padding: 6px 9px; font-size: 9px; }
+      .workspace { display: block; }
+      .entry-panel { padding: 18px 14px 19px; border-right: 0; border-bottom: 1px solid var(--line); }
+      .entry-head { margin-bottom: 14px; }
+      .dashboard { padding: 15px 12px 24px; }
+      .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .summary-card { padding: 10px; grid-template-columns: 30px minmax(0, 1fr); gap: 8px; }
+      .summary-icon { width: 30px; height: 30px; }
+      .summary-value { font-size: 15px; }
+      .charts-grid { min-height: 0; display: flex; flex-direction: column; }
+      .chart-card { min-height: 310px; padding: 15px 13px 13px; }
+      .chart-card.body-chart { min-height: 300px; }
+      .chart-card.activity-chart { min-height: 360px; }
+      .chart-card.heatmap-card { min-height: 235px; }
+      .card-heading { display: block; }
+      .heatmap-card .card-heading { display: flex; }
+      .chart-legend { margin-top: 9px; justify-content: flex-start; }
+      .workout-filter { margin-top: 10px; }
+      .workout-filter select { width: 100%; }
+      .heatmap-footer { align-items: flex-start; flex-direction: column; gap: 6px; }
+    }
+
+    @media (max-width: 380px) {
+      .brand-mark { display: none; }
+      .period-btn { padding-inline: 7px; }
+      .field-grid, .exercise-fields { grid-template-columns: 1fr; }
+      .field-grid .field + .field { margin-top: 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
     }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    // === Supabase config (fill in after setup) ===
     const SUPABASE_URL = 'https://akzggruuubossntnielm.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_bHZgl9T6sDr2-Wnh_EffBw_D3e4tNnu';
   </script>
   <script src="js/backend-memory.js"></script>
   <script src="js/backend-supabase.js"></script>
   <script src="js/backend-caching.js"></script>
+  <script src="js/exercise-heatmap.js"></script>
+  <script src="js/workout-metrics.js"></script>
   <script src="js/data-manager.js"></script>
 </head>
 <body>
-  <div id="app-error" style="display:none; position:fixed; top:0; left:0; right:0;
-       background:#cf3a3a; color:#fff; padding:.6rem; text-align:center; z-index:9999;"></div>
-<div class="app">
-  <header class="header">
-    <h1>Health Tracker</h1>
-    <div class="header-actions"></div>
-  </header>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <nav class="tabs">
-    <button class="tab-btn" data-tab="tracker">Tracker</button>
-    <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
-  </nav>
-
-  <!-- TRACKER TAB -->
-  <div id="tracker" class="tab-panel">
-    <!-- Month nav (outside tracker-body) -->
-    <div class="calendar-nav" id="calendarNav">
-      <button class="btn btn-secondary btn-sm" onclick="prevMonth()">← Prev</button>
-      <h2 id="monthTitle">Loading...</h2>
-      <button class="btn btn-secondary btn-sm" onclick="nextMonth()">Next →</button>
-    </div>
-
-    <div class="tracker-body">
-      <main class="center-panel" id="centerPanel">
-        <div class="content-wrapper">
-          <div id="recordsPanelContainer" class="records-panel-top"></div>
-          <div class="calendar-grid" id="calendarGrid"></div>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12h4l2.1-5 4.2 10 2-5H21" />
+          </svg>
         </div>
-      </main>
-    </div>
-  </div>
-
-  <!-- DASHBOARD TAB -->
-  <div id="dashboard" class="tab-panel active">
-    <div class="dash-inner">
-      <!-- Period filter buttons -->
-      <div class="dash-periods">
-        <button class="period-btn active" onclick="setPeriod(30, this)">直近30日</button>
-        <button class="period-btn" onclick="setPeriod(90, this)">直近90日</button>
-        <button class="period-btn" onclick="setPeriod(0, this)">全期間</button>
-      </div>
-
-      <!-- Body charts: weight + body fat + sleep -->
-      <div class="chart-row three">
-        <div class="chart-card">
-          <h3>⚖️ 体重推移</h3>
-          <div class="chart-box"><canvas id="weightChart"></canvas></div>
-        </div>
-        <div class="chart-card">
-          <h3>🔥 体脂肪率推移</h3>
-          <div class="chart-box"><canvas id="bfChart"></canvas></div>
-        </div>
-        <div class="chart-card">
-          <h3>😴 睡眠推移</h3>
-          <div class="chart-box"><canvas id="sleepChart"></canvas></div>
+        <div class="brand-copy">
+          <p class="eyebrow">Personal health overview</p>
+          <h1>Health Tracker</h1>
         </div>
       </div>
 
-      <!-- Category gauges: 筋トレ / 有酸素 / HIIT, each with per-exercise breakdown (built dynamically) -->
-      <div class="ex-gauge-grid" id="exGaugeGrid"></div>
-    </div>
-  </div>
-</div>
-
-<script>
-  let DataManager; // assigned at startup via createDataManager(createSupabaseBackend(sb))
-
-  // Exercise icon map
-  const EX_ICON = {
-    '腕立て': '💪', 'アブローラー': '🛞', 'スクワット': '🦵', '斜め懸垂': '🧗',
-    'RUN': '🏃', 'WALKING': '🚶', 'BIKE': '🚲', 'HIIT': '🔥',
-  };
-
-  // Tab switching
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById(btn.dataset.tab).classList.add('active');
-      if (btn.dataset.tab === 'dashboard') renderCharts().catch(e => showError('チャート読み込みエラー'));
-    });
-  });
-
-  // ===== CALENDAR =====
-  let currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-
-  const TODAY = (() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  })();
-
-  function toDateStr(y, m, d) {
-    return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-  }
-
-  async function renderCalendar() {
-    const y = currentMonth.getFullYear();
-    const m = currentMonth.getMonth();
-    const daysInMonth = new Date(y, m+1, 0).getDate();
-    const firstDow = new Date(y, m, 1).getDay(); // 0=Sun
-
-    // Month title
-    document.getElementById('monthTitle').textContent =
-      currentMonth.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long' });
-
-    // Calendar grid
-    const grid = document.getElementById('calendarGrid');
-    grid.innerHTML = '';
-
-    // Headers
-    ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(day => {
-      const h = document.createElement('div');
-      h.className = 'cal-header-cell';
-      h.textContent = day;
-      grid.appendChild(h);
-    });
-
-    // Empty cells before day 1
-    for (let i = 0; i < firstDow; i++) {
-      const cell = document.createElement('div');
-      cell.className = 'cal-cell empty';
-      grid.appendChild(cell);
-    }
-
-    // Day cells
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dateStr = toDateStr(y, m, day);
-      const cell = document.createElement('div');
-      cell.className = 'cal-cell' + (dateStr === TODAY ? ' today' : '');
-      cell.dataset.date = dateStr;
-
-      // Day number
-      const num = document.createElement('div');
-      num.className = 'cal-day-num';
-
-      const dayDiv = document.createElement('div');
-      dayDiv.textContent = day;
-      num.appendChild(dayDiv);
-
-      // Body data (weight / body fat)
-      const bodyRec = await DataManager.getBody(dateStr);
-      if (bodyRec && bodyRec.weight != null && bodyRec.bodyFat != null) {
-        const bodyData = document.createElement('div');
-        bodyData.className = 'cal-body-data';
-        bodyData.textContent = `${bodyRec.weight}kg/${bodyRec.bodyFat}%`;
-        num.appendChild(bodyData);
-      }
-
-      const sleepRec = await DataManager.getSleep(dateStr);
-      if (sleepRec && sleepRec.hours != null) {
-        const sleepData = document.createElement('div');
-        sleepData.className = 'cal-body-data';
-        sleepData.textContent = `${sleepRec.hours}h`;
-        num.appendChild(sleepData);
-      }
-
-      cell.appendChild(num);
-
-      // Exercise icons
-      const types = await DataManager.getExerciseTypes(dateStr);
-      if (types.length) {
-        const iconRow = document.createElement('div');
-        iconRow.className = 'cal-exercise-icons';
-        iconRow.textContent = types.map(t => EX_ICON[t] || '•').join('');
-        cell.appendChild(iconRow);
-      }
-
-      // Click to select date
-      cell.addEventListener('click', async e => {
-        const di = document.getElementById('recordDate');
-        if (di) di.value = dateStr;
-        await renderRecordsPanel();
-      });
-
-      grid.appendChild(cell);
-    }
-  }
-
-  async function prevMonth() {
-    currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
-    try { await renderCalendar(); }
-    catch (e) { showError('接続できません。通信環境を確認してください'); console.error(e); }
-  }
-  async function nextMonth() {
-    currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
-    try { await renderCalendar(); }
-    catch (e) { showError('接続できません。通信環境を確認してください'); console.error(e); }
-  }
-
-  // ===== RECORDS PANEL =====
-  async function renderRecordsPanel() {
-    const container = document.getElementById('recordsPanelContainer');
-    if (!container) return;
-
-    // Get selected date (preserve existing selection, default to TODAY)
-    const existingInput = document.getElementById('recordDate');
-    const selectedDate = existingInput ? existingInput.value : TODAY;
-
-    // Get stored data for selected date
-    const bodyRec = await DataManager.getBody(selectedDate) || {};
-    const sleepRec = await DataManager.getSleep(selectedDate) || {};
-    const exTypes = DataManager.EXERCISE_TYPES;
-    const exOptions = exTypes.map(t => `<option value="${t}">${EX_ICON[t] || ''} ${t}</option>`).join('');
-    const exDetails = await DataManager.getExerciseDetails(selectedDate);
-    const exList = exDetails.length
-      ? exDetails.map(e => `
-        <div class="ex-detail-row">
-          <span>${EX_ICON[e.type] || '•'} ${e.type}</span>
-          <span style="display:flex; align-items:center; gap:8px;">
-            <span class="ex-detail-text">${e.detail ? e.detail : ''}</span>
-            <button class="ex-del-btn" data-type="${e.type}" title="削除"
-                    style="border:none; background:none; color:var(--text-soft); cursor:pointer; font-size:13px; line-height:1; padding:2px;">✕</button>
-          </span>
-        </div>`).join('')
-      : '<div class="ex-detail-empty">記録なし</div>';
-
-    container.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-        <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.7px; color:var(--text-muted);">記録</div>
-        <button class="records-toggle-btn" onclick="toggleRecordsPanel()" title="折りたたむ/展開">−</button>
+      <div class="topbar-actions">
+        <div class="sync-status" id="syncStatus" data-state="loading" aria-live="polite">
+          <span class="sync-dot" aria-hidden="true"></span>
+          <span id="syncStatusText">読み込み中</span>
+        </div>
+        <div class="period-control" aria-label="グラフ表示期間">
+          <button class="period-btn active" type="button" data-period="30" aria-pressed="true">30日</button>
+          <button class="period-btn" type="button" data-period="90" aria-pressed="false">90日</button>
+          <button class="period-btn" type="button" data-period="0" aria-pressed="false">全期間</button>
+        </div>
       </div>
-      <div style="display: flex; flex-direction: column; gap: 6px;">
-        <div class="form-group">
-          <label>日付</label>
-          <input type="date" id="recordDate" value="${selectedDate}" />
-        </div>
-        <div class="form-group">
-          <label>体重 (kg)</label>
-          <input type="number" step="0.05" inputmode="decimal" id="recordWeight"
-                 value="${bodyRec.weight ?? ''}" placeholder="--" />
-        </div>
-        <div class="form-group">
-          <label>体脂肪 (%)</label>
-          <input type="number" step="0.1" inputmode="decimal" id="recordBodyFat"
-                 value="${bodyRec.bodyFat ?? ''}" placeholder="--" />
-        </div>
-        <div class="form-group">
-          <label>睡眠 合計 (h)</label>
-          <input type="number" step="0.1" inputmode="decimal" id="recordSleep"
-                 value="${sleepRec.hours ?? ''}" placeholder="--" />
-        </div>
-        <div class="form-group">
-          <label>うち 夜 / 昼 (h)</label>
-          <div style="display:flex; gap:6px;">
-            <input type="number" step="0.1" inputmode="decimal" id="recordSleepNight"
-                   value="${sleepRec.night_hours ?? ''}" placeholder="夜" style="flex:1; min-width:0;" />
-            <input type="number" step="0.1" inputmode="decimal" id="recordSleepNap"
-                   value="${sleepRec.nap_hours ?? ''}" placeholder="昼" style="flex:1; min-width:0;" />
+    </header>
+
+    <div class="workspace">
+      <aside class="entry-panel" aria-label="健康記録の入力">
+        <div class="entry-head">
+          <div>
+            <h2>記録を入力</h2>
+            <p>日付を選んで、測定値と睡眠をまとめて保存。</p>
           </div>
+          <span class="date-badge" id="selectedDateBadge">今日</span>
         </div>
-        <button class="btn btn-primary" id="saveBodyBtn">保存</button>
-        <div id="bodySaveMsg" style="font-size:10px; font-weight:600; min-height:12px;"></div>
 
-        <div class="form-group" style="margin-top:8px;">
-          <label>トレーニング</label>
-          <div style="display:flex; gap:6px;">
-            <select id="exType" style="flex:1.1; min-width:0; padding:9px 8px; border:1px solid var(--border-strong); border-radius:var(--radius-sm); font-family:var(--font); font-size:13px; color:var(--text); background:var(--surface);">
-              ${exOptions}
-            </select>
-            <input type="text" id="exDetail" inputmode="text" placeholder="回数・距離 (任意)" style="flex:1; min-width:0;" />
+        <form id="healthForm" novalidate>
+          <div class="form-section">
+            <div class="field">
+              <label for="recordDate">記録日</label>
+              <input type="date" id="recordDate" required>
+            </div>
           </div>
+
+          <section class="form-section" aria-labelledby="bodySectionLabel">
+            <h3 class="section-label" id="bodySectionLabel"><span class="section-icon">↗</span>からだ</h3>
+            <div class="field-grid">
+              <div class="field">
+                <label for="recordWeight">体重</label>
+                <div class="input-wrap">
+                  <input type="number" id="recordWeight" step="0.05" min="0" inputmode="decimal" placeholder="--">
+                  <span class="unit">kg</span>
+                </div>
+              </div>
+              <div class="field">
+                <label for="recordBodyFat">体脂肪率</label>
+                <div class="input-wrap">
+                  <input type="number" id="recordBodyFat" step="0.1" min="0" inputmode="decimal" placeholder="--">
+                  <span class="unit">%</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="form-section" aria-labelledby="sleepSectionLabel">
+            <h3 class="section-label" id="sleepSectionLabel"><span class="section-icon">☾</span>睡眠</h3>
+            <div class="field">
+              <label for="recordSleep">合計</label>
+              <div class="input-wrap">
+                <input type="number" id="recordSleep" step="0.1" min="0" inputmode="decimal" placeholder="--">
+                <span class="unit">h</span>
+              </div>
+            </div>
+            <div class="field-grid" style="margin-top:10px">
+              <div class="field">
+                <label for="recordSleepNight">夜</label>
+                <div class="input-wrap">
+                  <input type="number" id="recordSleepNight" step="0.1" min="0" inputmode="decimal" placeholder="--">
+                  <span class="unit">h</span>
+                </div>
+              </div>
+              <div class="field">
+                <label for="recordSleepNap">昼寝</label>
+                <div class="input-wrap">
+                  <input type="number" id="recordSleepNap" step="0.1" min="0" inputmode="decimal" placeholder="--">
+                  <span class="unit">h</span>
+                </div>
+              </div>
+            </div>
+            <p class="field-note">夜と昼寝を入れる場合は両方を入力。合計との一致を保存時に確認します。</p>
+          </section>
+
+          <button class="btn btn-primary" id="saveHealthBtn" type="submit">測定値を保存</button>
+          <p class="form-message" id="healthMessage" aria-live="polite"></p>
+        </form>
+
+        <div class="panel-divider"></div>
+
+        <section aria-labelledby="exerciseTitle">
+          <div class="entry-head" style="margin-bottom:12px">
+            <div>
+              <h2 id="exerciseTitle">運動を追加</h2>
+              <p>選択中の日付へ種目を記録します。</p>
+            </div>
+          </div>
+          <form id="exerciseForm">
+            <div class="exercise-fields">
+              <div class="field">
+                <label for="exType">種目</label>
+                <select id="exType"></select>
+              </div>
+              <div class="field">
+                <label for="exDetail">詳細（任意）</label>
+                <input type="text" id="exDetail" placeholder="5km / 20回">
+              </div>
+            </div>
+            <div class="exercise-actions">
+              <p class="form-message" id="exerciseMessage" aria-live="polite"></p>
+              <button class="btn btn-primary" id="saveExerciseBtn" type="submit">追加</button>
+            </div>
+          </form>
+          <div class="exercise-list" id="exerciseList" aria-label="選択日の運動記録"></div>
+        </section>
+      </aside>
+
+      <section class="dashboard" aria-label="健康データのグラフ">
+        <div class="summary-grid">
+          <article class="summary-card">
+            <div class="summary-icon" aria-hidden="true">↗</div>
+            <div>
+              <p class="summary-label">最新の体重</p>
+              <p class="summary-value" id="latestWeight">--</p>
+              <p class="summary-meta" id="latestWeightMeta">記録なし</p>
+            </div>
+          </article>
+          <article class="summary-card">
+            <div class="summary-icon" aria-hidden="true">%</div>
+            <div>
+              <p class="summary-label">最新の体脂肪率</p>
+              <p class="summary-value" id="latestBodyFat">--</p>
+              <p class="summary-meta" id="latestBodyFatMeta">記録なし</p>
+            </div>
+          </article>
+          <article class="summary-card">
+            <div class="summary-icon" aria-hidden="true">☾</div>
+            <div>
+              <p class="summary-label">平均睡眠</p>
+              <p class="summary-value" id="averageSleep">--</p>
+              <p class="summary-meta" id="averageSleepMeta">記録なし</p>
+            </div>
+          </article>
+          <article class="summary-card">
+            <div class="summary-icon" aria-hidden="true">●</div>
+            <div>
+              <p class="summary-label">運動した日</p>
+              <p class="summary-value" id="activeDays">--</p>
+              <p class="summary-meta" id="activeDaysMeta">記録なし</p>
+            </div>
+          </article>
         </div>
-        <button class="btn btn-primary" id="saveExBtn">運動を記録</button>
-        <div id="exSaveMsg" style="font-size:10px; font-weight:600; min-height:12px;"></div>
-      </div>
-      <div class="ex-detail-list" style="display: flex; flex-direction: column; gap: 3px; margin-top: 6px;">
-        ${exList}
-      </div>
-    `;
 
-    // Bind date change event
-    document.getElementById('recordDate').addEventListener('change', async () => {
-      await renderRecordsPanel();
-      await renderCalendar();
-    });
+        <div class="charts-grid">
+          <article class="chart-card body-chart">
+            <div class="card-heading">
+              <div>
+                <h2>からだの推移</h2>
+                <p>凡例を押すと片方だけ表示できます。片方しか記録がない日も、記録がある側は描画します。</p>
+              </div>
+              <div class="chart-legend">
+                <button type="button" class="legend-item legend-toggle" data-series="weight" aria-pressed="true"><span class="legend-dot" style="background:#173f35"></span>体重</button>
+                <button type="button" class="legend-item legend-toggle" data-series="bodyFat" aria-pressed="true"><span class="legend-dot" style="background:#e26f52"></span>体脂肪率</button>
+              </div>
+            </div>
+            <div class="chart-stage">
+              <canvas id="bodyChart" aria-label="体重と体脂肪率の推移グラフ" role="img"></canvas>
+              <div class="empty-state" id="bodyEmpty">この期間の体組成記録はありません</div>
+            </div>
+          </article>
 
-    // Bind body-record save
-    document.getElementById('saveBodyBtn').addEventListener('click', handleSaveBody);
-    // Bind exercise save + per-row delete
-    document.getElementById('saveExBtn').addEventListener('click', handleSaveExercise);
-    container.querySelectorAll('.ex-del-btn').forEach(b => {
-      b.addEventListener('click', () => handleRemoveExercise(b.dataset.type));
-    });
-  }
+          <article class="chart-card heatmap-card" aria-labelledby="heatmapTitle">
+            <div class="card-heading">
+              <div>
+                <h2 id="heatmapTitle">運動ヒートマップ</h2>
+                <p>筋トレとApple Healthを、1日ごとの運動回数で表示。</p>
+              </div>
+              <p class="heatmap-summary" id="heatmapSummary">集計中…</p>
+            </div>
+            <div class="heatmap-scroll" id="heatmapScroll" tabindex="0" aria-label="年間運動ヒートマップ。横にスクロールできます">
+              <div class="heatmap-grid" id="exerciseHeatmap"></div>
+            </div>
+            <div class="heatmap-footer">
+              <div class="heatmap-detail" id="heatmapDetail" aria-live="polite">日付を選ぶと種目別の内訳を表示します。</div>
+              <div class="heatmap-legend" aria-label="運動回数の色の濃さ">
+                <span>少</span>
+                <span class="heatmap-legend-cell" style="background:#edf0ed"></span>
+                <span class="heatmap-legend-cell" style="background:#cbe2d5"></span>
+                <span class="heatmap-legend-cell" style="background:#83bd9c"></span>
+                <span class="heatmap-legend-cell" style="background:#418265"></span>
+                <span class="heatmap-legend-cell" style="background:#173f35"></span>
+                <span>多</span>
+              </div>
+            </div>
+          </article>
 
-  async function handleSaveExercise() {
-    const date = document.getElementById('recordDate').value;
-    const type = document.getElementById('exType').value;
-    const detail = document.getElementById('exDetail').value.trim();
-    const msg = document.getElementById('exSaveMsg');
-    if (!date || !type) { msg.style.color = 'var(--amber)'; msg.textContent = '種目を選択'; return; }
-    try {
-      await DataManager.setExercise(date, type, detail || null);
-      msg.style.color = 'var(--green)';
-      msg.textContent = `${type} を記録しました`;
-      await renderRecordsPanel();
-      await renderCalendar();
-    } catch (e) {
-      msg.style.color = 'var(--amber)';
-      msg.textContent = '記録に失敗';
-      showError('運動の記録に失敗しました: ' + e.message);
-      console.error(e);
+          <article class="chart-card sleep-chart">
+            <div class="card-heading">
+              <div>
+                <h2>睡眠のバランス</h2>
+                <p>内訳不明の合計値は、夜・昼寝と混ぜずに表示。</p>
+              </div>
+              <div class="chart-legend" aria-hidden="true">
+                <span class="legend-item"><span class="legend-dot" style="background:#4278a8"></span>夜</span>
+                <span class="legend-item"><span class="legend-dot" style="background:#98c2ad"></span>昼寝</span>
+                <span class="legend-item"><span class="legend-dot" style="background:#c7cbc8"></span>合計のみ</span>
+              </div>
+            </div>
+            <div class="chart-stage">
+              <canvas id="sleepChart" aria-label="夜と昼寝の睡眠時間グラフ" role="img"></canvas>
+              <div class="empty-state" id="sleepEmpty">この期間の睡眠記録はありません</div>
+            </div>
+          </article>
+
+          <article class="chart-card activity-chart">
+            <div class="card-heading">
+              <div>
+                <h2>Apple Health ワークアウト</h2>
+                <p id="workoutDescription">1回ごとの距離と時間。未記録値は補完しません。</p>
+              </div>
+              <label class="workout-filter" for="workoutTypeFilter">種目
+                <select id="workoutTypeFilter">
+                  <option value="Walking">ウォーキング</option>
+                  <option value="Running">ジョギング</option>
+                  <option value="Cycling">自転車</option>
+                </select>
+              </label>
+            </div>
+            <div class="workout-stats" aria-live="polite">
+              <div class="workout-stat"><p class="workout-stat-label">回数</p><p class="workout-stat-value" id="workoutCount">--</p></div>
+              <div class="workout-stat"><p class="workout-stat-label">時間</p><p class="workout-stat-value" id="workoutDuration">--</p></div>
+              <div class="workout-stat"><p class="workout-stat-label">距離</p><p class="workout-stat-value" id="workoutDistance">--</p></div>
+              <div class="workout-stat"><p class="workout-stat-label">消費</p><p class="workout-stat-value" id="workoutCalories">--</p></div>
+            </div>
+            <div class="chart-legend" id="workoutLegend" aria-hidden="true"></div>
+            <div class="chart-stage">
+              <canvas id="workoutChart" aria-label="種目別のApple Healthワークアウトグラフ" role="img"></canvas>
+              <div class="empty-state" id="workoutEmpty">この期間のワークアウト記録はありません</div>
+            </div>
+          </article>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    let DataManager;
+    let activePeriod = 30;
+    let dashboardData = { body: [], sleep: [], exercise: [], workout: [] };
+    const charts = {};
+    let toastTimer;
+
+    const EX_ICON = {
+      '腕立て': '◆', 'アブローラー': '◆', 'スクワット': '◆', '斜め懸垂': '◆',
+      'RUN': '↗', 'WALKING': '→', 'BIKE': '◌', 'HIIT': '⚡',
+    };
+
+    const WORKOUT_LABEL = { Walking: 'ウォーキング', Running: 'ジョギング', Cycling: '自転車' };
+    const HEATMAP_TYPE_LABEL = {
+      ...WORKOUT_LABEL,
+      RUN: 'ジョギング', WALKING: 'ウォーキング', BIKE: '自転車', HIIT: 'HIIT',
+    };
+    const WEEKDAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
+
+    const pad = value => String(value).padStart(2, '0');
+
+    function localDateString(date) {
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
     }
-  }
 
-  async function handleRemoveExercise(type) {
-    const date = document.getElementById('recordDate').value;
-    try {
-      await DataManager.removeExercise(date, type);
-      await renderRecordsPanel();
-      await renderCalendar();
-    } catch (e) {
-      showError('運動の削除に失敗しました: ' + e.message);
-      console.error(e);
-    }
-  }
+    const TODAY = localDateString(new Date());
 
-  async function handleSaveBody() {
-    const date = document.getElementById('recordDate').value;
-    const weight = document.getElementById('recordWeight').value.trim();
-    const bodyFat = document.getElementById('recordBodyFat').value.trim();
-    const sleep = document.getElementById('recordSleep').value.trim();
-    const sleepNight = document.getElementById('recordSleepNight').value.trim();
-    const sleepNap = document.getElementById('recordSleepNap').value.trim();
-    const msg = document.getElementById('bodySaveMsg');
-    const hasBody = weight !== '' || bodyFat !== '';
-    const hasSleep = sleep !== '' || sleepNight !== '' || sleepNap !== '';
-    if (!hasBody && !hasSleep) {
-      msg.style.color = 'var(--amber)';
-      msg.textContent = '記録を入力';
-      return;
+    function parseLocalDate(dateString) {
+      const [year, month, day] = dateString.split('-').map(Number);
+      return new Date(year, month - 1, day);
     }
-    // 内訳が片方だけだと合計が決まらない（片方をゼロと決めつけない）
-    if (sleep === '' && (sleepNight === '') !== (sleepNap === '')) {
-      msg.style.color = 'var(--amber)';
-      msg.textContent = '合計も入力を';
-      return;
-    }
-    // 体重・体脂肪はどちらか一方だけでも保存できる（空欄は既存値を温存する）。
-    try {
-      if (hasBody) await DataManager.setBody(date, weight, bodyFat);
-      if (hasSleep) await DataManager.setSleep(date, sleep, sleepNight, sleepNap);
-      msg.style.color = 'var(--green)';
-      msg.textContent = '保存しました';
-      await renderCalendar();
-    } catch (e) {
-      msg.style.color = 'var(--amber)';
-      msg.textContent = '保存に失敗';
-      showError('保存に失敗しました: ' + e.message);
-      console.error(e);
-    }
-  }
 
-  function toggleRecordsPanel() {
-    const container = document.getElementById('recordsPanelContainer');
-    if (!container) return;
-    container.classList.toggle('collapsed');
-    const btn = container.querySelector('.records-toggle-btn');
-    if (btn) {
-      btn.textContent = container.classList.contains('collapsed') ? '＋' : '−';
+    function shortDate(dateString) {
+      if (!dateString) return '記録なし';
+      return parseLocalDate(dateString).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' });
     }
-  }
 
-  async function renderStreaks() {
-    const streakRow = document.getElementById('streakRow');
-    if (!streakRow) return;
+    function chartDate(dateString) {
+      return parseLocalDate(dateString).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' });
+    }
 
-    // Helper: count consecutive days backward from TODAY where pred(dateStr) is truthy
-    async function calcStreak(pred) {
-      let count = 0;
-      const [y, mo, d] = TODAY.split('-').map(Number);
-      let cur = new Date(y, mo - 1, d);
-      while (true) {
-        const dateStr = toDateStr(cur.getFullYear(), cur.getMonth(), cur.getDate());
-        if (!await pred(dateStr)) break;
-        count++;
-        cur.setDate(cur.getDate() - 1);
+    function setMessage(element, message, tone = '') {
+      element.textContent = message;
+      element.className = `form-message${tone ? ` ${tone}` : ''}`;
+    }
+
+    function showToast(message, tone = 'success') {
+      const toast = document.getElementById('toast');
+      clearTimeout(toastTimer);
+      toast.textContent = message;
+      toast.className = `toast ${tone === 'error' ? 'error' : ''} show`;
+      toastTimer = setTimeout(() => { toast.className = 'toast'; }, 2800);
+    }
+
+    function setSyncStatus(label, state = 'ready') {
+      document.getElementById('syncStatus').dataset.state = state;
+      document.getElementById('syncStatusText').textContent = label;
+    }
+
+    function setBusy(button, busy, busyLabel) {
+      if (!button.dataset.label) button.dataset.label = button.textContent;
+      button.disabled = busy;
+      button.textContent = busy ? busyLabel : button.dataset.label;
+    }
+
+    function getCutoff() {
+      if (activePeriod === 0) return null;
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - activePeriod + 1);
+      return localDateString(cutoff);
+    }
+
+    function filterPeriod(records) {
+      const cutoff = getCutoff();
+      return records.filter(record => (!cutoff || record.date >= cutoff) && record.date <= TODAY);
+    }
+
+    function latestWithValue(records, key) {
+      return [...records]
+        .filter(record => record[key] != null)
+        .sort((a, b) => b.date.localeCompare(a.date))[0] ?? null;
+    }
+
+    function metric(valueId, metaId, record, key, unit) {
+      const value = document.getElementById(valueId);
+      const meta = document.getElementById(metaId);
+      if (!record) {
+        value.textContent = '--';
+        meta.textContent = '記録なし';
+        return;
       }
-      return count;
+      // 体重は小数2桁、体脂肪率は小数1桁で揃える
+      const raw = record[key];
+      const shown = typeof raw === 'number' ? raw.toFixed(key === 'weight' ? 2 : 1) : raw;
+      value.innerHTML = `${shown}<small>${unit}</small>`;
+      meta.textContent = `${shortDate(record.date)}の記録`;
     }
 
-    const cards = [
-      { icon: '💪', label: '筋トレ連続', count: await calcStreak(d => DataManager.hasStrength(d)) },
-      { icon: '🏃', label: 'RUN連続',    count: await calcStreak(d => DataManager.hasExercise(d, 'RUN')) },
-      { icon: '⚡', label: 'HIIT連続',   count: await calcStreak(d => DataManager.hasExercise(d, 'HIIT')) },
-    ];
+    function renderSummary(body, sleep, exercise, workout) {
+      metric('latestWeight', 'latestWeightMeta', latestWithValue(body, 'weight'), 'weight', 'kg');
+      metric('latestBodyFat', 'latestBodyFatMeta', latestWithValue(body, 'bodyFat'), 'bodyFat', '%');
 
-    streakRow.innerHTML = cards.map(s => `
-      <div class="streak-chip">
-        <span class="streak-label">${s.icon} ${s.label}</span>
-        <span class="streak-num">${s.count}日</span>
-      </div>
-    `).join('');
-  }
+      const sleepValues = sleep.map(record => record.hours).filter(value => value != null);
+      const sleepValue = document.getElementById('averageSleep');
+      const sleepMeta = document.getElementById('averageSleepMeta');
+      if (sleepValues.length) {
+        const average = sleepValues.reduce((sum, value) => sum + value, 0) / sleepValues.length;
+        sleepValue.innerHTML = `${average.toFixed(1)}<small>h</small>`;
+        sleepMeta.textContent = `${sleepValues.length}件の平均`;
+      } else {
+        sleepValue.textContent = '--';
+        sleepMeta.textContent = '記録なし';
+      }
 
-  // ===== MAIN RENDER & INIT =====
-  async function renderAll() {
-    await renderCalendar();
-    await renderRecordsPanel();
-    await renderStreaks();
-  }
+      const uniqueDays = new Set([...exercise, ...workout].map(record => record.date)).size;
+      const activeValue = document.getElementById('activeDays');
+      const activeMeta = document.getElementById('activeDaysMeta');
+      if (uniqueDays) {
+        activeValue.innerHTML = `${uniqueDays}<small>日</small>`;
+        activeMeta.textContent = `${exercise.length + workout.length}件の運動`;
+      } else {
+        activeValue.textContent = '--';
+        activeMeta.textContent = '記録なし';
+      }
+    }
 
-  // ===== DASHBOARD =====
-  let activePeriod = 30;
-  let charts = {};
-
-  function setPeriod(days, btn) {
-    activePeriod = days;
-    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    renderCharts().catch(e => showError('チャート読み込みエラー'));
-  }
-
-  function destroyChart(id) {
-    if (charts[id]) {
+    function destroyChart(id) {
+      if (!charts[id]) return;
       charts[id].destroy();
       delete charts[id];
     }
-  }
 
-  async function renderCharts() {
-    if (!DataManager) return;
-    // Scan a date range to gather body, sleep, and exercise records
-    const today = new Date();
-    const startDate = new Date(today);
-    startDate.setFullYear(startDate.getFullYear() - 1); // look back up to 1 year
-
-    // Build date list
-    const dates = [];
-    for (let d = new Date(startDate); d <= today; d.setDate(d.getDate() + 1)) {
-      dates.push(toDateStr(d.getFullYear(), d.getMonth(), d.getDate()));
+    function showEmpty(id, show) {
+      document.getElementById(id).style.display = show ? 'grid' : 'none';
     }
 
-    // Calculate cutoff date
-    let cutoff = null;
-    if (activePeriod > 0) {
-      const d = new Date();
-      d.setDate(d.getDate() - activePeriod);
-      cutoff = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    }
+    const baseScale = {
+      border: { display: false },
+      grid: { color: 'rgba(22, 35, 31, .07)', drawTicks: false },
+      ticks: { color: '#7d8883', font: { size: 9, weight: 600 }, padding: 8, maxRotation: 0 },
+    };
 
-    // Fetch body and sleep records for date range
-    const bodyRecords = [];
-    const sleepRecords = [];
-    for (const date of dates) {
-      if (cutoff && date < cutoff) continue;
-      const rec = await DataManager.getBody(date);
-      if (rec && rec.weight != null && rec.bodyFat != null) bodyRecords.push(rec);
-      const sleepRec = await DataManager.getSleep(date);
-      if (sleepRec && sleepRec.hours != null) sleepRecords.push(sleepRec);
-    }
-    bodyRecords.sort((a, b) => a.date < b.date ? -1 : 1);
-    sleepRecords.sort((a, b) => a.date < b.date ? -1 : 1);
+    // 凡例のボタンで線を出し分ける。両方 false にはしない（下の click ハンドラで抑止）。
+    const bodySeries = { weight: true, bodyFat: true };
 
-    // Destroy existing charts (weight/bf/sleep + dynamic exgauge-*)
-    Object.keys(charts).forEach(destroyChart);
+    function renderBodyChart(records) {
+      destroyChart('body');
+      showEmpty('bodyEmpty', records.length === 0);
+      if (!records.length) return;
 
-    // --- Line charts (weight & body fat) ---
-    if (bodyRecords.length > 0) {
-      const labels = bodyRecords.map(r => r.date);
-
-      // Weight line chart
-      const weightCtx = document.getElementById('weightChart').getContext('2d');
-      charts['weightChart'] = new Chart(weightCtx, {
+      const labels = [...new Set(records.map(record => record.date))].sort();
+      const byDate = new Map(records.map(record => [record.date, record]));
+      charts.body = new Chart(document.getElementById('bodyChart'), {
         type: 'line',
         data: {
-          labels,
-          datasets: [{
-            label: '体重 (kg)',
-            data: bodyRecords.map(r => r.weight),
-            borderColor: '#2f6df6',
-            backgroundColor: 'rgba(47,109,246,0.10)',
-            fill: true,
-            tension: 0.4,
-            pointRadius: 3,
-            pointBackgroundColor: '#2f6df6',
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: { y: { beginAtZero: false } }
-        }
-      });
-
-      // Body fat line chart
-      const bfCtx = document.getElementById('bfChart').getContext('2d');
-      charts['bfChart'] = new Chart(bfCtx, {
-        type: 'line',
-        data: {
-          labels,
-          datasets: [{
-            label: '体脂肪率 (%)',
-            data: bodyRecords.map(r => r.bodyFat),
-            borderColor: '#c77514',
-            backgroundColor: 'rgba(199,117,20,0.10)',
-            fill: true,
-            tension: 0.4,
-            pointRadius: 3,
-            pointBackgroundColor: '#c77514',
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: { y: { beginAtZero: false } }
-        }
-      });
-    }
-
-    if (sleepRecords.length > 0) {
-      const sleepCtx = document.getElementById('sleepChart').getContext('2d');
-      // 内訳のある日は夜／昼の積み上げ、内訳のない日は合計だけを別色で出す。
-      // 内訳不明の日を「昼寝ゼロ」として夜に積むと嘘になるので混ぜない。
-      const hasSplit = r => r.night_hours != null && r.nap_hours != null;
-      charts['sleepChart'] = new Chart(sleepCtx, {
-        type: 'bar',
-        data: {
-          labels: sleepRecords.map(r => r.date),
+          labels: labels.map(chartDate),
           datasets: [
             {
-              label: '夜',
-              data: sleepRecords.map(r => hasSplit(r) ? r.night_hours : null),
-              backgroundColor: '#0f766e',
-              stack: 'sleep',
+              label: '体重',
+              data: labels.map(date => byDate.get(date)?.weight ?? null),
+              hidden: !bodySeries.weight,
+              yAxisID: 'weight',
+              borderColor: '#173f35',
+              backgroundColor: 'rgba(23, 63, 53, .08)',
+              pointBackgroundColor: '#173f35',
+              pointBorderColor: '#fff',
+              pointBorderWidth: 2,
+              pointRadius: 3,
+              pointHoverRadius: 5,
+              borderWidth: 2.25,
+              tension: .32,
+              spanGaps: true,
+              fill: true,
             },
             {
-              label: '昼寝',
-              data: sleepRecords.map(r => hasSplit(r) ? r.nap_hours : null),
-              backgroundColor: '#5eead4',
-              stack: 'sleep',
+              label: '体脂肪率',
+              data: labels.map(date => byDate.get(date)?.bodyFat ?? null),
+              hidden: !bodySeries.bodyFat,
+              yAxisID: 'bodyFat',
+              borderColor: '#e26f52',
+              pointBackgroundColor: '#e26f52',
+              pointBorderColor: '#fff',
+              pointBorderWidth: 2,
+              pointRadius: 3,
+              pointHoverRadius: 5,
+              borderWidth: 2,
+              borderDash: [5, 4],
+              tension: .32,
+              spanGaps: true,
             },
-            {
-              label: '合計のみ（内訳なし）',
-              data: sleepRecords.map(r => hasSplit(r) ? null : r.hours),
-              backgroundColor: '#cbd5e1',
-              stack: 'sleep',
-            },
-          ]
+          ],
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { display: true, labels: { boxWidth: 12, font: { size: 10 } } } },
-          scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }
-        }
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#16231f',
+              padding: 10,
+              titleFont: { size: 10 },
+              bodyFont: { size: 10 },
+              callbacks: {
+                label: item => {
+                  const isWeight = item.dataset.yAxisID === 'weight';
+                  const unit = isWeight ? 'kg' : '%';
+                  const shown = item.raw == null
+                    ? item.formattedValue
+                    : Number(item.raw).toFixed(isWeight ? 2 : 1);
+                  return ` ${item.dataset.label}: ${shown}${unit}`;
+                },
+              },
+            },
+          },
+          scales: {
+            x: { ...baseScale, grid: { display: false }, ticks: { ...baseScale.ticks, maxTicksLimit: 9 } },
+            weight: {
+              ...baseScale,
+              display: bodySeries.weight,
+              position: 'left',
+              beginAtZero: false,
+              // Chart.js の目盛りは 71.20000000000002 のような誤差込みの値を渡してくる。
+              // 丸めてから数値に戻し、目盛りに 71.20kg のような余計な0を出さない。
+              ticks: { ...baseScale.ticks, callback: value => `${Number(Number(value).toFixed(2))}kg` },
+            },
+            bodyFat: {
+              ...baseScale,
+              display: bodySeries.bodyFat,
+              position: 'right',
+              beginAtZero: false,
+              grid: { drawOnChartArea: false },
+              ticks: { ...baseScale.ticks, callback: value => `${Number(Number(value).toFixed(1))}%` },
+            },
+          },
+        },
       });
     }
 
-    // --- Category donut gauges + per-exercise breakdown (over the selected period) ---
-    const filteredDates = cutoff ? dates.filter(d => d >= cutoff) : dates;
-    const totalDays = filteredDates.length;
+    function renderSleepChart(records) {
+      destroyChart('sleep');
+      const usable = records.filter(record => record.hours != null).sort((a, b) => a.date.localeCompare(b.date));
+      showEmpty('sleepEmpty', usable.length === 0);
+      if (!usable.length) return;
+      const hasSplit = record => record.night_hours != null && record.nap_hours != null;
 
-    // Categories: a day counts as "achieved" if any of its member types was done.
-    const categories = [
-      { key: 'strength', emoji: '💪', label: '筋トレ',  color: '#d61f2b',
-        types: ['腕立て', 'アブローラー', 'スクワット', '斜め懸垂'], breakdown: true },
-      { key: 'aerobic',  emoji: '🏃', label: '有酸素',  color: '#1f5fe0',
-        types: ['RUN', 'WALKING', 'BIKE'], breakdown: true },
-      { key: 'hiit',     emoji: '⚡', label: 'HIIT',    color: '#c4119a',
-        types: ['HIIT'], breakdown: false },
-    ];
-
-    // Single pass over the period: tally category-achieved days and per-type day counts.
-    const catDone = {};
-    const typeDays = {};
-    for (const c of categories) {
-      catDone[c.key] = 0;
-      for (const t of c.types) typeDays[t] = 0;
-    }
-    for (const date of filteredDates) {
-      const todays = new Set(await DataManager.getExerciseTypes(date));
-      for (const c of categories) {
-        if (c.types.some(t => todays.has(t))) catDone[c.key]++;
-        for (const t of c.types) if (todays.has(t)) typeDays[t]++;
-      }
-    }
-
-    // Build the 3 category cards (donut + optional breakdown table).
-    const exGrid = document.getElementById('exGaugeGrid');
-    if (exGrid) {
-      exGrid.innerHTML = categories.map((c, i) => {
-        const table = c.breakdown
-          ? `<table class="ex-breakdown"><tbody>` +
-            c.types.map(t =>
-              `<tr><td>${EX_ICON[t]} ${t}</td><td>${typeDays[t]}日</td></tr>`).join('') +
-            `</tbody></table>`
-          : '';
-        return `
-        <div class="chart-card ex-gauge-card">
-          <h3>${c.emoji} ${c.label}</h3>
-          <div class="chart-box gauge-box">
-            <canvas id="exgauge-${i}"></canvas>
-            <div class="gauge-center" id="exgauge-${i}-c"></div>
-          </div>
-          ${table}
-        </div>`;
-      }).join('');
-    }
-
-    for (let i = 0; i < categories.length; i++) {
-      const { key, color } = categories[i];
-      const chartId = `exgauge-${i}`;
-      const gaugeId = `exgauge-${i}-c`;
-      const done = catDone[key];
-      const remaining = Math.max(totalDays - done, 0);
-      const pct = totalDays > 0 ? Math.min(Math.round((done / totalDays) * 100), 100) : 0;
-
-      const ctx = document.getElementById(chartId).getContext('2d');
-      charts[chartId] = new Chart(ctx, {
-        type: 'doughnut',
+      charts.sleep = new Chart(document.getElementById('sleepChart'), {
+        type: 'bar',
         data: {
-          labels: ['達成', '未達成'],
-          datasets: [{
-            data: [done, remaining || (done === 0 ? 1 : 0)],
-            backgroundColor: [color, '#eaedf2'],
-            borderWidth: 0,
-            hoverOffset: 0,
-          }]
+          labels: usable.map(record => chartDate(record.date)),
+          datasets: [
+            { label: '夜', data: usable.map(record => hasSplit(record) ? record.night_hours : null), backgroundColor: '#4278a8', borderRadius: 4, stack: 'sleep' },
+            { label: '昼寝', data: usable.map(record => hasSplit(record) ? record.nap_hours : null), backgroundColor: '#98c2ad', borderRadius: 4, stack: 'sleep' },
+            { label: '合計のみ', data: usable.map(record => hasSplit(record) ? null : record.hours), backgroundColor: '#c7cbc8', borderRadius: 4, stack: 'sleep' },
+          ],
         },
         options: {
-          cutout: '72%',
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { display: false }, tooltip: { enabled: false } }
-        }
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { display: false },
+            tooltip: { backgroundColor: '#16231f', padding: 10, callbacks: { label: item => ` ${item.dataset.label}: ${item.formattedValue}h` } },
+          },
+          scales: {
+            x: { ...baseScale, stacked: true, grid: { display: false }, ticks: { ...baseScale.ticks, maxTicksLimit: 7 } },
+            y: { ...baseScale, stacked: true, beginAtZero: true, suggestedMax: 8, ticks: { ...baseScale.ticks, callback: value => `${Number(Number(value).toFixed(1))}h` } },
+          },
+        },
+      });
+    }
+
+    const displayTotal = (value, unit, digits = 0) => value == null
+      ? '--'
+      : `${Number(value.toFixed(digits)).toLocaleString('ja-JP')} ${unit}`;
+
+    function heatmapDayText(day, today) {
+      const date = parseLocalDate(day.date).toLocaleDateString('ja-JP', {
+        year: 'numeric', month: 'long', day: 'numeric', weekday: 'short',
+      });
+      if (day.date > today) return `${date}：未到来`;
+      if (!day.count) return `${date}：運動なし`;
+      const breakdown = day.breakdown
+        .map(item => `${HEATMAP_TYPE_LABEL[item.type] || item.type} ${item.count}件`)
+        .join('、');
+      return `${date}：${day.count}件（${breakdown}）`;
+    }
+
+    function showHeatmapDay(cell, day, today) {
+      document.querySelector('.heatmap-cell.selected')?.classList.remove('selected');
+      cell.classList.add('selected');
+      const detail = document.getElementById('heatmapDetail');
+      const text = heatmapDayText(day, today);
+      const separator = text.indexOf('：');
+      const date = document.createElement('strong');
+      date.textContent = separator === -1 ? text : text.slice(0, separator);
+      detail.replaceChildren(date, document.createTextNode(separator === -1 ? '' : text.slice(separator)));
+    }
+
+    function renderExerciseHeatmap(exerciseRecords, workoutRecords) {
+      const now = new Date();
+      const year = now.getFullYear();
+      const today = localDateString(now);
+      const aggregated = aggregateExerciseEventsByDay(exerciseRecords, workoutRecords, year);
+      const grid = buildExerciseHeatmapDays(year, aggregated);
+      const heatmap = document.getElementById('exerciseHeatmap');
+      const scroll = document.getElementById('heatmapScroll');
+      heatmap.replaceChildren();
+      heatmap.style.setProperty('--heatmap-weeks', grid.weekCount);
+
+      const fragment = document.createDocumentFragment();
+      for (let month = 1; month <= 12; month += 1) {
+        const firstDate = `${year}-${pad(month)}-01`;
+        const firstDay = grid.days.find(day => day.date === firstDate);
+        const label = document.createElement('span');
+        label.className = 'heatmap-month';
+        label.style.gridColumn = `${firstDay.weekIndex + 2} / span 4`;
+        label.textContent = `${month}月`;
+        fragment.appendChild(label);
+      }
+
+      WEEKDAY_LABELS.forEach((labelText, dayOfWeek) => {
+        const label = document.createElement('span');
+        label.className = 'heatmap-weekday';
+        label.style.gridRow = String(dayOfWeek + 2);
+        label.textContent = labelText;
+        fragment.appendChild(label);
       });
 
-      // Center label
-      const gauge = document.getElementById(gaugeId);
-      if (gauge) {
-        gauge.innerHTML =
-          `<div class="gauge-pct" style="color:${color}">${pct}%</div>` +
-          `<div class="gauge-sub">${done}/${totalDays}日</div>`;
+      let todayCell = null;
+      grid.days.forEach(day => {
+        const cell = document.createElement('button');
+        cell.type = 'button';
+        cell.className = `heatmap-cell${day.date > today ? ' future' : ''}`;
+        cell.dataset.level = String(Math.min(day.count, 4));
+        cell.style.gridColumn = String(day.weekIndex + 2);
+        cell.style.gridRow = String(day.dayOfWeek + 2);
+        cell.title = heatmapDayText(day, today);
+        cell.setAttribute('aria-label', cell.title);
+        const reveal = () => showHeatmapDay(cell, day, today);
+        cell.addEventListener('mouseenter', reveal);
+        cell.addEventListener('focus', reveal);
+        cell.addEventListener('click', reveal);
+        if (day.date === today) todayCell = cell;
+        fragment.appendChild(cell);
+      });
+      heatmap.appendChild(fragment);
+
+      const daysSoFar = grid.days.filter(day => day.date <= today);
+      const activeDays = daysSoFar.filter(day => day.count > 0).length;
+      document.getElementById('heatmapSummary').textContent = `今年${daysSoFar.length}日中 ${activeDays}日活動`;
+      if (todayCell) {
+        const todayDay = grid.days.find(day => day.date === today);
+        showHeatmapDay(todayCell, todayDay, today);
+        requestAnimationFrame(() => {
+          scroll.scrollLeft = Math.max(0, todayCell.offsetLeft - scroll.clientWidth / 2);
+        });
       }
     }
-  }
 
-  // ===== STARTUP (認証なし: anon キーで直接接続) =====
-  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+    function renderWorkoutChart(records) {
+      destroyChart('workout');
+      const species = document.getElementById('workoutTypeFilter').value;
+      const selected = selectWorkoutRecords(records, species);
+      const summary = summarizeWorkoutRecords(records, species);
+      const label = WORKOUT_LABEL[species];
+      const cycling = species === 'Cycling';
 
-  function showError(msg) {
-    const el = document.getElementById('app-error');
-    el.textContent = msg;
-    el.style.display = 'block';
-  }
+      document.getElementById('workoutCount').textContent = summary.count == null ? '--' : `${summary.count} 件`;
+      document.getElementById('workoutDuration').textContent = displayTotal(summary.durationMinutes, '分', 0);
+      document.getElementById('workoutDistance').textContent = displayTotal(summary.distanceKm, 'km', 1);
+      document.getElementById('workoutCalories').textContent = displayTotal(summary.caloriesKcal, 'kcal', 0);
+      document.getElementById('workoutDescription').textContent = cycling
+        ? '距離データがないため、1回ごとの時間のみを表示します。'
+        : '1回ごとの距離と時間。未記録値は補完しません。';
+      const empty = document.getElementById('workoutEmpty');
+      empty.textContent = `${label}の記録はありません`;
+      showEmpty('workoutEmpty', !summary.hasRecords);
 
-  async function startApp() {
-    DataManager = createDataManager(createCachingBackend(createSupabaseBackend(sb)));
-    try {
-      await renderAll();
-      // Dashboard is the default tab, so render its charts on load.
-      renderCharts().catch(e => showError('チャート読み込みエラー'));
-    } catch (e) {
-      showError('接続できません。通信環境を確認してください');
-      console.error(e);
+      const legend = document.getElementById('workoutLegend');
+      legend.innerHTML = cycling
+        ? '<span class="legend-item"><span class="legend-dot" style="background:#4278a8"></span>時間</span>'
+        : '<span class="legend-item"><span class="legend-dot" style="background:#4278a8"></span>時間</span><span class="legend-item"><span class="legend-dot" style="background:#e26f52"></span>距離</span>';
+      if (!summary.hasRecords) return;
+
+      const datasets = [{
+        type: 'bar', label: '時間', yAxisID: 'duration',
+        data: selected.map(record => record.durationMinutes),
+        backgroundColor: '#4278a8', borderRadius: 4,
+      }];
+      if (!cycling) {
+        datasets.push({
+          type: 'line', label: '距離', yAxisID: 'distance',
+          data: selected.map(record => record.distanceKm),
+          borderColor: '#e26f52', backgroundColor: '#e26f52',
+          pointRadius: 3, pointHoverRadius: 5, borderWidth: 2, tension: .25, spanGaps: false,
+        });
+      }
+
+      const scales = {
+        x: { ...baseScale, grid: { display: false }, ticks: { ...baseScale.ticks, maxTicksLimit: 6 } },
+        duration: { ...baseScale, position: 'left', beginAtZero: true, ticks: { ...baseScale.ticks, callback: value => `${Math.round(value)}分` } },
+      };
+      if (!cycling) {
+        scales.distance = {
+          ...baseScale, position: 'right', beginAtZero: true,
+          grid: { drawOnChartArea: false },
+          ticks: { ...baseScale.ticks, callback: value => `${Number(Number(value).toFixed(1))}km` },
+        };
+      }
+
+      charts.workout = new Chart(document.getElementById('workoutChart'), {
+        type: 'bar',
+        data: {
+          labels: selected.map(record => `${chartDate(record.date)} ${record.time.slice(0, 5)}`),
+          datasets,
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#16231f', padding: 10,
+              callbacks: { label: item => ` ${item.dataset.label}: ${item.formattedValue}${item.dataset.yAxisID === 'distance' ? 'km' : '分'}` },
+            },
+          },
+          scales,
+        },
+      });
     }
-  }
 
-  startApp();
-</script>
+    function renderDashboard() {
+      const body = filterPeriod(dashboardData.body);
+      const sleep = filterPeriod(dashboardData.sleep);
+      const exercise = filterPeriod(dashboardData.exercise);
+      const workout = filterPeriod(dashboardData.workout);
+      renderSummary(body, sleep, exercise, workout);
+      renderBodyChart(body);
+      renderSleepChart(sleep);
+      renderExerciseHeatmap(dashboardData.exercise, dashboardData.workout);
+      renderWorkoutChart(workout);
+    }
 
-<!-- CONTEXT MENU -->
+    async function refreshDashboard() {
+      setSyncStatus('同期中', 'loading');
+      const [body, sleep, exercise, workout] = await Promise.all([
+        DataManager.getBodyRecords(),
+        DataManager.getSleepRecords(),
+        DataManager.getExerciseRecords(),
+        DataManager.getWorkoutRecords(),
+      ]);
+      dashboardData = {
+        body,
+        sleep,
+        exercise,
+        workout,
+      };
+      renderDashboard();
+      const now = new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+      setSyncStatus(`${now} 更新`, 'ready');
+    }
+
+    async function loadSelectedDate() {
+      const date = document.getElementById('recordDate').value || TODAY;
+      document.getElementById('selectedDateBadge').textContent = date === TODAY ? '今日' : shortDate(date);
+      const [body, sleep, exercise] = await Promise.all([
+        DataManager.getBody(date),
+        DataManager.getSleep(date),
+        DataManager.getExerciseDetails(date),
+      ]);
+      document.getElementById('recordWeight').value = body?.weight ?? '';
+      document.getElementById('recordBodyFat').value = body?.bodyFat ?? '';
+      document.getElementById('recordSleep').value = sleep?.hours ?? '';
+      document.getElementById('recordSleepNight').value = sleep?.night_hours ?? '';
+      document.getElementById('recordSleepNap').value = sleep?.nap_hours ?? '';
+      renderExerciseList(exercise);
+    }
+
+    function renderExerciseList(records) {
+      const list = document.getElementById('exerciseList');
+      list.replaceChildren();
+      if (!records.length) {
+        const empty = document.createElement('div');
+        empty.className = 'empty-list';
+        empty.textContent = 'この日の運動記録はありません';
+        list.appendChild(empty);
+        return;
+      }
+
+      records.forEach(record => {
+        const row = document.createElement('div');
+        row.className = 'exercise-row';
+        const name = document.createElement('span');
+        name.className = 'exercise-name';
+        name.textContent = `${EX_ICON[record.type] || '•'} ${record.type}`;
+        if (record.detail) {
+          const detail = document.createElement('span');
+          detail.className = 'exercise-detail';
+          detail.textContent = record.detail;
+          name.appendChild(detail);
+        }
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'icon-btn';
+        remove.textContent = '×';
+        remove.title = `${record.type}を削除`;
+        remove.setAttribute('aria-label', `${record.type}を削除`);
+        remove.addEventListener('click', () => removeExercise(record.type));
+        row.append(name, remove);
+        list.appendChild(row);
+      });
+    }
+
+    async function saveHealth(event) {
+      event.preventDefault();
+      const date = document.getElementById('recordDate').value;
+      const weight = document.getElementById('recordWeight').value.trim();
+      const bodyFat = document.getElementById('recordBodyFat').value.trim();
+      const sleep = document.getElementById('recordSleep').value.trim();
+      const night = document.getElementById('recordSleepNight').value.trim();
+      const nap = document.getElementById('recordSleepNap').value.trim();
+      const message = document.getElementById('healthMessage');
+      const button = document.getElementById('saveHealthBtn');
+      const hasBody = weight !== '' || bodyFat !== '';
+      const hasSleep = sleep !== '' || night !== '' || nap !== '';
+
+      if (!date) {
+        setMessage(message, '日付を選択してください', 'error');
+        return;
+      }
+      if (!hasBody && !hasSleep) {
+        setMessage(message, '保存する測定値を入力してください', 'error');
+        return;
+      }
+      if ((night === '') !== (nap === '')) {
+        setMessage(message, '睡眠の内訳は夜と昼寝を両方入力してください', 'error');
+        return;
+      }
+
+      setBusy(button, true, '保存中…');
+      setMessage(message, '');
+      try {
+        if (hasBody) await DataManager.setBody(date, weight, bodyFat);
+        if (hasSleep) await DataManager.setSleep(date, sleep, night, nap);
+        await Promise.all([loadSelectedDate(), refreshDashboard()]);
+        setMessage(message, '保存しました', 'success');
+        showToast(`${shortDate(date)}の測定値を保存しました`);
+      } catch (error) {
+        setMessage(message, error.message || '保存に失敗しました', 'error');
+        showToast('測定値を保存できませんでした', 'error');
+        console.error(error);
+      } finally {
+        setBusy(button, false, '保存中…');
+      }
+    }
+
+    async function saveExercise(event) {
+      event.preventDefault();
+      const date = document.getElementById('recordDate').value;
+      const type = document.getElementById('exType').value;
+      const detail = document.getElementById('exDetail').value.trim();
+      const message = document.getElementById('exerciseMessage');
+      const button = document.getElementById('saveExerciseBtn');
+      if (!date || !type) {
+        setMessage(message, '日付と種目を選択してください', 'error');
+        return;
+      }
+
+      setBusy(button, true, '追加中…');
+      setMessage(message, '');
+      try {
+        await DataManager.setExercise(date, type, detail || null);
+        document.getElementById('exDetail').value = '';
+        await Promise.all([loadSelectedDate(), refreshDashboard()]);
+        setMessage(message, '追加しました', 'success');
+        showToast(`${type}を記録しました`);
+      } catch (error) {
+        setMessage(message, '運動を記録できませんでした', 'error');
+        showToast('運動を記録できませんでした', 'error');
+        console.error(error);
+      } finally {
+        setBusy(button, false, '追加中…');
+      }
+    }
+
+    async function removeExercise(type) {
+      const date = document.getElementById('recordDate').value;
+      try {
+        await DataManager.removeExercise(date, type);
+        await Promise.all([loadSelectedDate(), refreshDashboard()]);
+        showToast(`${type}を削除しました`);
+      } catch (error) {
+        showToast('運動を削除できませんでした', 'error');
+        console.error(error);
+      }
+    }
+
+    function bindEvents() {
+      document.getElementById('healthForm').addEventListener('submit', saveHealth);
+      document.getElementById('exerciseForm').addEventListener('submit', saveExercise);
+      document.getElementById('recordDate').addEventListener('change', async () => {
+        setMessage(document.getElementById('healthMessage'), '');
+        setMessage(document.getElementById('exerciseMessage'), '');
+        try { await loadSelectedDate(); }
+        catch (error) { showToast('選択日の記録を読み込めませんでした', 'error'); console.error(error); }
+      });
+      document.querySelectorAll('.period-btn').forEach(button => {
+        button.addEventListener('click', () => {
+          activePeriod = Number(button.dataset.period);
+          document.querySelectorAll('.period-btn').forEach(item => {
+            const active = item === button;
+            item.classList.toggle('active', active);
+            item.setAttribute('aria-pressed', String(active));
+          });
+          renderDashboard();
+        });
+      });
+      document.getElementById('workoutTypeFilter').addEventListener('change', renderDashboard);
+      document.querySelectorAll('.legend-toggle').forEach(button => {
+        button.addEventListener('click', () => {
+          const series = button.dataset.series;
+          const other = series === 'weight' ? 'bodyFat' : 'weight';
+          // 両方消すと何も残らないので、最後の1本は消させない
+          if (bodySeries[series] && !bodySeries[other]) return;
+          bodySeries[series] = !bodySeries[series];
+          button.setAttribute('aria-pressed', String(bodySeries[series]));
+          renderDashboard();
+        });
+      });
+    }
+
+    async function startApp() {
+      if (typeof Chart === 'undefined' || typeof supabase === 'undefined') {
+        setSyncStatus('ライブラリ読込エラー', 'error');
+        showToast('必要なライブラリを読み込めませんでした', 'error');
+        return;
+      }
+      Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+      Chart.defaults.color = '#66736e';
+
+      const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+      DataManager = createDataManager(createCachingBackend(createSupabaseBackend(client)));
+      document.getElementById('recordDate').value = TODAY;
+      document.getElementById('exType').innerHTML = DataManager.EXERCISE_TYPES
+        .map(type => `<option value="${type}">${EX_ICON[type] || '•'} ${type}</option>`)
+        .join('');
+      bindEvents();
+
+      try {
+        await Promise.all([loadSelectedDate(), refreshDashboard()]);
+      } catch (error) {
+        setSyncStatus('接続エラー', 'error');
+        showToast('データへ接続できません。通信環境を確認してください', 'error');
+        console.error(error);
+      }
+    }
+
+    startApp();
+  </script>
 </body>
 </html>

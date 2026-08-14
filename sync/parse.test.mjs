@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseBody, parseSleep } from './parse.mjs';
+import { addWorkoutRecordKeys, parseBody, parseSleep, parseWorkout } from './parse.mjs';
 
 const BODY_MD = `# 体組成ログ
 
@@ -94,4 +94,34 @@ test('parseExercise は空詳細を null にする', () => {
   const rows = parseExercise(EX_MD);
   const run = rows.find(r => r.date === '2026-06-16' && r.type === 'RUN');
   assert.equal(run.detail, null);
+});
+
+const WORKOUT_MD = `# ワークアウトログ
+
+| 日付 | 時刻 | 種目 | 時間(分) | 距離(km) | kcal |
+|------|------|------|---------|---------|------|
+| 2026-08-03 | 07:00:00 | Walking | 42.1 | 5.2 | 240 |
+| 2026-08-03 | 18:00:00 | Walking | 36 | 4.1 | 201 |
+| 2026-08-02 | 09:30:00 | Cycling | 45 |  | 350 |
+`;
+
+test('parseWorkout は同日の複数回を集約せず保持する', () => {
+  const rows = parseWorkout(WORKOUT_MD);
+  assert.equal(rows.length, 3);
+  assert.equal(rows.filter(row => row.date === '2026-08-03').length, 2);
+});
+
+test('parseWorkout は Cycling の空距離を null のまま返す', () => {
+  const cycling = parseWorkout(WORKOUT_MD).find(row => row.species === 'Cycling');
+  assert.deepEqual(cycling, {
+    date: '2026-08-02', time: '09:30:00', species: 'Cycling',
+    duration_minutes: 45, distance_km: null, calories_kcal: 350,
+  });
+});
+
+test('addWorkoutRecordKeys は同時刻の複数回も別キーにする', () => {
+  const row = parseWorkout(WORKOUT_MD)[0];
+  const keyed = addWorkoutRecordKeys([row, { ...row }]);
+  assert.equal(keyed[0].record_key, '2026-08-03T07:00:00|Walking|1');
+  assert.equal(keyed[1].record_key, '2026-08-03T07:00:00|Walking|2');
 });

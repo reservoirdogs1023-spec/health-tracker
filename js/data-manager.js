@@ -1,11 +1,16 @@
 // Async domain layer. Depends on an injected backend (Memory or Supabase).
 function createDataManager(backend) {
   // ----- Body records -----
-  const getBody = async (date) => {
+  const getBodyRecords = async () => {
     const rows = await backend.list('body_records');
+    return rows.map(r => ({ date: r.date, weight: r.weight, bodyFat: r.body_fat }));
+  };
+
+  const getBody = async (date) => {
+    const rows = await getBodyRecords();
     const r = rows.find(x => x.date === date);
     if (!r) return null;
-    return { date: r.date, weight: r.weight, bodyFat: r.body_fat };
+    return r;
   };
 
   // 空欄（'' / null / undefined）は「変更しない」の意味。upsert は行ごと置き換えるので、
@@ -29,23 +34,26 @@ function createDataManager(backend) {
   // テーブル不在だけを吸収し、通信エラー等はそのまま投げる（本物の障害を隠さない）。
   const isMissingTable = (e) => /Could not find the table/i.test(e?.message ?? '');
 
-  const getSleep = async (date) => {
+  const getSleepRecords = async () => {
     let rows;
     try {
       rows = await backend.list('sleep_records');
     } catch (e) {
-      if (isMissingTable(e)) return null;
+      if (isMissingTable(e)) return [];
       throw e;
     }
-    const r = rows.find(x => x.date === date);
-    if (!r) return null;
     // night/nap の null は「昼寝ゼロ」ではなく「内訳が不明」。0 に丸めない。
-    return {
+    return rows.map(r => ({
       date: r.date,
       hours: r.hours,
       night_hours: r.night_hours ?? null,
       nap_hours: r.nap_hours ?? null,
-    };
+    }));
+  };
+
+  const getSleep = async (date) => {
+    const rows = await getSleepRecords();
+    return rows.find(x => x.date === date) ?? null;
   };
 
   // 保存は握りつぶさない（記録できていないのに成功と見せない）。原因が伝わる文言にして投げ直す。
@@ -79,8 +87,13 @@ function createDataManager(backend) {
   const EXERCISE_TYPES = ['腕立て', 'アブローラー', 'スクワット', '斜め懸垂', 'RUN', 'WALKING', 'BIKE', 'HIIT'];
   const STRENGTH_TYPES = ['腕立て', 'アブローラー', 'スクワット', '斜め懸垂'];
 
-  const getExerciseTypes = async (date) => {
+  const getExerciseRecords = async () => {
     const rows = await backend.list('exercise_records');
+    return rows.map(r => ({ date: r.date, type: r.type, detail: r.detail ?? null }));
+  };
+
+  const getExerciseTypes = async (date) => {
+    const rows = await getExerciseRecords();
     return rows.filter(r => r.date === date).map(r => r.type);
   };
 
@@ -90,8 +103,8 @@ function createDataManager(backend) {
   };
 
   const getExerciseDetails = async (date) => {
-    const rows = await backend.list('exercise_records');
-    return rows.filter(r => r.date === date).map(r => ({ type: r.type, detail: r.detail ?? null }));
+    const rows = await getExerciseRecords();
+    return rows.filter(r => r.date === date).map(r => ({ type: r.type, detail: r.detail }));
   };
 
   const hasStrength = async (date) => {
@@ -113,13 +126,36 @@ function createDataManager(backend) {
     await backend.remove('exercise_records', { date, type });
   };
 
+  // ----- Apple Health workout records (read-only in the Web UI) -----
+  const WORKOUT_TYPES = ['Walking', 'Running', 'Cycling'];
+
+  const getWorkoutRecords = async () => {
+    let rows;
+    try {
+      rows = await backend.list('workout_records');
+    } catch (e) {
+      // マイグレーション前でも既存の体組成・睡眠・筋トレ画面は止めない。
+      if (isMissingTable(e)) return [];
+      throw e;
+    }
+    return rows.map(r => ({
+      date: r.date,
+      time: r.time,
+      species: r.species,
+      durationMinutes: r.duration_minutes ?? null,
+      distanceKm: r.distance_km ?? null,
+      caloriesKcal: r.calories_kcal ?? null,
+    }));
+  };
+
   // タスク機能は 2026-08-07 に本アプリから分離した（タスク管理は Obsidian 側で完結）。
   // Supabase の tasks テーブルとデータは残してあるが、このアプリからは触らない。
 
   return {
-    getBody, setBody,
-    getSleep, setSleep,
-    EXERCISE_TYPES, STRENGTH_TYPES, getExerciseTypes, hasExercise, getExerciseDetails, hasStrength, toggleExercise, setExercise, removeExercise,
+    getBody, getBodyRecords, setBody,
+    getSleep, getSleepRecords, setSleep,
+    EXERCISE_TYPES, STRENGTH_TYPES, getExerciseRecords, getExerciseTypes, hasExercise, getExerciseDetails, hasStrength, toggleExercise, setExercise, removeExercise,
+    WORKOUT_TYPES, getWorkoutRecords,
   };
 }
 
