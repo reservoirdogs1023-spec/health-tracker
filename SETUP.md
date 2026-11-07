@@ -1,3 +1,5 @@
+> 旧版の資料です。新しいWeb版は `web/README.md` を参照してください。旧匿名ポリシーや旧ページ配信は再開しないでください。
+
 # Health Tracker セットアップ
 
 localStorage 版を Supabase 同期版にするための初回セットアップ手順です。
