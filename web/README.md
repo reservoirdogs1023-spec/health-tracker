@@ -37,3 +37,12 @@ Supabase Freeは500MB。低活動状態が約7日続くと一時停止する場�
 ## 確認範囲
 
 PostgreSQL（PGlite）で本人・別人・未認証のアクセス、所有者変更の拒否、重複・競合の原子的な扱い、不正入力、全カテゴリの保全を検証。表示モデルの既存テストも継続する。本番ログインとスマホの実画面は、切替時に本人の操作で確認する。
+
+## Notion からの同期
+
+健康記録の正本は Notion の健康表。`.github/workflows/notion-sync.yml` が3時間ごとに Notion を読み、`public.health_web_mirror` で Supabase を Notion と同じ内容にする（`pending` は対象外）。
+
+- 必要な設定：Secrets `NOTION_TOKEN`（健康ページだけを共有した読み取り専用インテグレーション）・`SUPABASE_SECRET_KEY`、Variables `VITE_SUPABASE_URL`（既存）。
+- 手動実行は既定で dry run（件数だけ表示）。一度に `max_deletes`（既定5）を超えて消える場合は何も変えずに止まる。
+- 公開リポジトリなので、ログには件数とエラーコードだけを出す。
+- 手元での確認：`NOTION_TOKEN=… SUPABASE_URL=… SUPABASE_SECRET_KEY=… node src/sync/run.ts --dry-run`

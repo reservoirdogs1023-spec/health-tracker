@@ -162,3 +162,59 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.health_web_save_entry(jsonb) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.health_web_save_entry(jsonb) TO authenticated;
+
+-- Notion -> Web mirror. Notion is the source of truth for every category except 'pending'
+-- (manual Web entries). Called only by the scheduled sync job with the service role.
+CREATE FUNCTION public.health_web_mirror(snapshot jsonb, max_deletes integer DEFAULT 5, dry_run boolean DEFAULT false)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+DECLARE owner uuid; entry jsonb; existing jsonb;
+  inserted_count integer := 0; updated_count integer := 0; unchanged_count integer := 0; deleted_count integer := 0;
+BEGIN
+  SELECT user_id INTO owner FROM public.health_web_owner;
+  IF owner IS NULL THEN RAISE EXCEPTION 'Owner not configured'; END IF;
+  IF jsonb_typeof(snapshot) IS DISTINCT FROM 'array' OR jsonb_array_length(snapshot) NOT BETWEEN 1 AND 20000 THEN
+    RAISE EXCEPTION 'Invalid mirror snapshot';
+  END IF;
+  IF max_deletes IS NULL OR max_deletes < 0 THEN RAISE EXCEPTION 'Invalid max_deletes'; END IF;
+  PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(owner::text, 0));
+  IF EXISTS (SELECT 1 FROM jsonb_array_elements(snapshot) e
+    GROUP BY e->>'category', e->>'key' HAVING count(*) > 1) THEN
+    RAISE EXCEPTION 'Duplicate keys in mirror snapshot';
+  END IF;
+  FOR entry IN SELECT value FROM jsonb_array_elements(snapshot) LOOP
+    IF jsonb_typeof(entry) IS DISTINCT FROM 'object'
+      OR NOT entry ?& ARRAY['category','key','payload']
+      OR entry - ARRAY['category','key','payload'] <> '{}'::jsonb
+      OR entry->>'category' NOT IN ('body','sleep','exercise','workout','vo2')
+      OR NOT public.health_web_valid_record(entry->>'category', entry->>'key', entry->'payload') THEN
+      RAISE EXCEPTION 'Invalid mirror record: % %', entry->>'category', entry->>'key';
+    END IF;
+    SELECT payload INTO existing FROM public.health_web_records
+      WHERE owner_id=owner AND category=entry->>'category' AND record_key=entry->>'key';
+    IF NOT FOUND THEN inserted_count := inserted_count + 1;
+    ELSIF existing IS DISTINCT FROM entry->'payload' THEN updated_count := updated_count + 1;
+    ELSE unchanged_count := unchanged_count + 1;
+    END IF;
+  END LOOP;
+  SELECT count(*) INTO deleted_count FROM public.health_web_records r
+    WHERE r.owner_id=owner AND r.category IN ('body','sleep','exercise','workout','vo2')
+      AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements(snapshot) e
+        WHERE e->>'category'=r.category AND e->>'key'=r.record_key);
+  IF deleted_count > max_deletes THEN
+    RAISE EXCEPTION 'Mirror would delete % records (limit %); nothing changed', deleted_count, max_deletes;
+  END IF;
+  IF NOT dry_run THEN
+    DELETE FROM public.health_web_records r
+      WHERE r.owner_id=owner AND r.category IN ('body','sleep','exercise','workout','vo2')
+        AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements(snapshot) e
+          WHERE e->>'category'=r.category AND e->>'key'=r.record_key);
+    INSERT INTO public.health_web_records AS current(owner_id,category,record_key,payload)
+      SELECT owner, e->>'category', e->>'key', e->'payload' FROM jsonb_array_elements(snapshot) e
+      ON CONFLICT (owner_id,category,record_key) DO UPDATE SET payload = EXCLUDED.payload
+        WHERE current.payload IS DISTINCT FROM EXCLUDED.payload;
+  END IF;
+  RETURN jsonb_build_object('inserted',inserted_count,'updated',updated_count,
+    'unchanged',unchanged_count,'deleted',deleted_count,'dryRun',dry_run);
+END $$;
+REVOKE ALL ON FUNCTION public.health_web_mirror(jsonb,integer,boolean) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.health_web_mirror(jsonb,integer,boolean) TO service_role;
