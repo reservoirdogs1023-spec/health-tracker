@@ -1,0 +1,39 @@
+name: Sync health records from Notion
+# Notion "記録" health databases are the source of truth; this copies them into
+# Supabase for the dashboard. Logs contain counts only (public repository).
+on:
+  schedule:
+    - cron: '17 */3 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Report counts only, write nothing'
+        type: boolean
+        default: true
+      max_deletes:
+        description: 'Abort if more Web records than this would be deleted'
+        default: '5'
+permissions:
+  contents: read
+concurrency:
+  group: health-notion-sync
+  cancel-in-progress: false
+defaults:
+  run:
+    working-directory: web
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Mirror Notion into Supabase
+        run: node src/sync/run.ts ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && '--dry-run' || '' }}
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          MAX_DELETES: ${{ inputs.max_deletes || '5' }}

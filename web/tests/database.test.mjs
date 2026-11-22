@@ -9,7 +9,7 @@ const OTHER = '22222222-2222-4222-8222-222222222222';
 async function setup() {
   const db = new PGlite();
   await db.exec(`
-    CREATE ROLE anon; CREATE ROLE authenticated;
+    CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
     CREATE SCHEMA auth;
     CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS
       $$ SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
